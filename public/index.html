@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WhalePulse AI v2 — rToken Sentiment Terminal</title>
+<meta name="description" content="WhalePulse AI v2 — tokenized equity and crypto sentiment analytics for $rNVDA and $rTSLA. Bitget AI Hackathon S2." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+<div class="depth" aria-hidden="true"></div>
+
+<header class="masthead">
+  <div class="brand">
+    <div class="sonar" aria-hidden="true">
+      <span class="ping"></span><span class="ping d2"></span><span class="core"></span>
+    </div>
+    <div class="wordmark">
+      <h1>WhalePulse<span class="ai">&nbsp;AI</span><em>v2</em></h1>
+      <p class="tagline">Tokenized Equity &amp; Crypto Sentiment Engine</p>
+    </div>
+  </div>
+  <div class="masthead-meta">
+    <div id="statusPill" class="pill pill--idle"><span class="dot"></span><span id="statusText">initialising</span></div>
+    <button id="refreshBtn" class="btn" type="button">
+      <span class="btn-glyph" aria-hidden="true">⟳</span> Re-scan
+    </button>
+  </div>
+</header>
+
+<div id="banner" class="banner" hidden>
+  <span class="banner-tag">SAMPLE DATA</span>
+  <p id="bannerText"></p>
+</div>
+
+<main>
+  <section class="readout" aria-label="Tracked tokenized assets">
+    <div class="section-head">
+      <h2>Sonar Readout</h2>
+      <span class="rule" aria-hidden="true"></span>
+      <span class="tracked" id="trackedList">—</span>
+    </div>
+    <div id="cards" class="cards">
+      <!-- asset cards injected by app.js -->
+      <div class="card card--skeleton"><div class="sk sk-a"></div><div class="sk sk-b"></div><div class="sk sk-c"></div></div>
+      <div class="card card--skeleton"><div class="sk sk-a"></div><div class="sk sk-b"></div><div class="sk sk-c"></div></div>
+    </div>
+  </section>
+
+  <section class="note-strip" aria-label="Market note">
+    <span class="note-label">Market Note</span>
+    <p id="marketNote">Awaiting first sonar sweep…</p>
+  </section>
+
+  <section class="telemetry" aria-label="Telemetry">
+    <div class="tele"><span class="k">Model</span><b id="tModel">—</b></div>
+    <div class="tele"><span class="k">Mode</span><b id="tMode">—</b></div>
+    <div class="tele"><span class="k">Latency</span><b id="tLatency">—</b></div>
+    <div class="tele"><span class="k">Upstream</span><b id="tUpstream">—</b></div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="endpoints">
+    <span class="k">Endpoints</span>
+    <a href="/api/sentiment" target="_blank" rel="noopener"><code>GET /api/sentiment</code></a>
+    <a href="/health" target="_blank" rel="noopener"><code>GET /health</code></a>
+  </div>
+  <div class="credits">
+    <a href="https://github.com/sarkisk-cod/WhalePulse-AI-v2" target="_blank" rel="noopener">source ↗</a>
+    <span class="sep" aria-hidden="true">/</span>
+    <span>Bitget AI Hackathon S2</span>
+  </div>
+</footer>
+
+<script src="/app.js"></script>
+</body>
+</html>
