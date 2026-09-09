@@ -26,6 +26,19 @@
     els.statusText.textContent = text;
   }
 
+  // Inline style beats any stylesheet rule, so banner visibility stays correct
+  // even if a visitor has an older cached styles.css.
+  function showBanner(text) {
+    els.bannerText.textContent = text;
+    els.banner.hidden = false;
+    els.banner.style.display = 'flex';
+  }
+
+  function hideBanner() {
+    els.banner.hidden = true;
+    els.banner.style.display = 'none';
+  }
+
   function normaliseSentiment(v) {
     const s = String(v || '').toLowerCase();
     if (s.indexOf('bull') !== -1) return 'bullish';
@@ -104,13 +117,13 @@
 
     if (payload.degraded) {
       setStatus('demo', 'sample data');
-      els.banner.hidden = false;
-      els.bannerText.textContent =
+      showBanner(
         (payload.notice || 'Live model call failed.') +
-        (payload.upstream_error ? ' Upstream: ' + payload.upstream_error : '');
+          (payload.upstream_error ? ' Upstream: ' + payload.upstream_error : '')
+      );
     } else {
       setStatus('live', 'live · qwen');
-      els.banner.hidden = true;
+      hideBanner();
     }
   }
 
@@ -126,8 +139,7 @@
       render(json);
     } catch (err) {
       setStatus('error', 'offline');
-      els.banner.hidden = false;
-      els.bannerText.textContent = 'Could not reach /api/sentiment — ' + err.message;
+      showBanner('Could not reach /api/sentiment — ' + err.message);
       els.cards.innerHTML = rawCard('Endpoint unreachable: ' + err.message);
       els.tMode.textContent = 'error';
     } finally {

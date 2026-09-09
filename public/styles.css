@@ -178,6 +178,7 @@ body {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ---------- banner ---------- */
+.banner[hidden] { display: none; }
 .banner {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
   margin: 0 clamp(20px, 5vw, 64px);
