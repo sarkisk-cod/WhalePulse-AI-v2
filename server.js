@@ -10,8 +10,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
 const QWEN_API_KEY = process.env.QWEN_API_KEY;
-const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || 'https://openrouter.ai/api/v1';
-const MODEL = process.env.MODEL || 'qwen/qwen3-235b-a22b';
+// Bitget AI Hackathon S2 Qwen gateway (per official setup guide).
+const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || 'https://hackathon.bitgetops.com/v1';
+const MODEL = process.env.MODEL || 'qwen3.8-max';
 
 const TRACKED = ['$rNVDA', '$rTSLA'];
 
