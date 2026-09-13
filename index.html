@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>WhalePulse AI — Cross-Market Intelligence Engine</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;500;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script>
+tailwind.config={theme:{extend:{colors:{void:'#0a0e17',panel:'#0f1520',panelLight:'#151d2e',cyan:'#00d4ff',neon:'#00ff88',amber:'#ffaa00',danger:'#ff4444',dimText:'#5a6a8a'},fontFamily:{display:['Orbitron','sans-serif'],mono:['JetBrains Mono','monospace'],body:['Inter','sans-serif']}}}}
+</script>
+<style>
+/* --- BASE --- */
+*{margin:0;padding:0;box-sizing:border-box}
+html{background:#0a0e17}
+body{font-family:'Inter',sans-serif;color:#c8d6e5;background:#0a0e17;overflow-x:hidden}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:#0a0e17}
+::-webkit-scrollbar-thumb{background:#1a2540;border-radius:3px}
+
+/* --- NOISE OVERLAY --- */
+body::before{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  opacity:.35}
+
+/* --- GLOW UTILITIES --- */
+.glow-cyan{text-shadow:0 0 12px rgba(0,212,255,.5)}
+.glow-green{text-shadow:0 0 12px rgba(0,255,136,.5)}
+.glow-amber{text-shadow:0 0 12px rgba(255,170,0,.5)}
+.glow-red{text-shadow:0 0 12px rgba(255,68,68,.5)}
+.box-glow-cyan{box-shadow:0 0 20px rgba(0,212,255,.08),inset 0 1px 0 rgba(0,212,255,.1)}
+.box-glow-green{box-shadow:0 0 20px rgba(0,255,136,.08),inset 0 1px 0 rgba(0,255,136,.1)}
+.box-glow-amber{box-shadow:0 0 20px rgba(255,170,0,.08),inset 0 1px 0 rgba(255,170,0,.1)}
+
+/* --- GLASS CARD --- */
+.glass{background:rgba(15,21,32,.75);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(0,212,255,.08);border-radius:12px}
+
+/* --- LIVE PULSE --- */
+@keyframes pulse-live{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,255,136,.6)}70%{opacity:1;box-shadow:0 0 0 8px rgba(0,255,136,0)}}
+.live-dot{width:10px;height:10px;border-radius:50%;background:#00ff88;animation:pulse-live 1.8s infinite}
+
+/* --- SCAN LINE --- */
+@keyframes scanline{0%{transform:translateY(-100%)}100%{transform:translateY(100vh)}}
+.scanline{position:fixed;top:0;left:0;width:100%;height:2px;background:linear-gradient(90deg,transparent,rgba(0,212,255,.06),transparent);z-index:9998;pointer-events:none;animation:scanline 8s linear infinite}
+
+/* --- PROGRESS BAR --- */
+#progress{position:fixed;top:0;left:0;height:2px;background:linear-gradient(90deg,#00d4ff,#00ff88);z-index:10000;transition:width .15s}
+
+/* --- SECTION REVEAL --- */
+.reveal{opacity:0;transform:translateY(40px)}
+
+/* --- PIPELINE ARROW --- */
+.pipe-arrow{position:relative;display:flex;align-items:center;justify-content:center}
+.pipe-arrow::after{content:'→';font-size:1.5rem;color:#00d4ff;margin:0 .5rem;font-family:'JetBrains Mono',monospace}
+
+/* --- ARCHITECTURE FLOW --- */
+.arch-box{border:1px solid rgba(0,212,255,.25);border-radius:8px;padding:1rem;background:rgba(0,212,255,.04);min-width:160px;text-align:center;transition:all .3s}
+.arch-box:hover{border-color:#00d4ff;box-shadow:0 0 24px rgba(0,212,255,.15)}
+.arch-arrow{color:#00d4ff;font-family:'JetBrains Mono';font-size:1.5rem;display:flex;align-items:center;justify-content:center}
+
+/* --- TABLE --- */
+.data-table{width:100%;border-collapse:separate;border-spacing:0}
+.data-table thead th{font-family:'JetBrains Mono';font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:#5a6a8a;padding:.75rem 1rem;border-bottom:1px solid rgba(0,212,255,.1);text-align:left}
+.data-table tbody td{font-family:'JetBrains Mono';font-size:.8rem;padding:.65rem 1rem;border-bottom:1px solid rgba(255,255,255,.03)}
+.data-table tbody tr{transition:background .2s}
+.data-table tbody tr:hover{background:rgba(0,212,255,.04)}
+
+/* --- GAUGE --- */
+.gauge-container{position:relative;width:280px;height:160px;margin:0 auto}
+
+/* --- ALERT ITEM --- */
+.alert-item{border-left:2px solid #00d4ff;padding:.6rem .8rem;margin-bottom:.5rem;background:rgba(0,212,255,.03);border-radius:0 6px 6px 0;font-size:.82rem;font-family:'JetBrains Mono';transition:all .3s}
+.alert-item:hover{border-left-color:#00ff88;background:rgba(0,255,136,.04)}
+
+/* --- TRENDING SCROLL --- */
+.trending-scroll{display:flex;gap:1rem;overflow-x:auto;padding-bottom:.5rem;scroll-snap-type:x mandatory}
+.trending-scroll::-webkit-scrollbar{height:4px}
+.trending-scroll::-webkit-scrollbar-thumb{background:#1a2540;border-radius:2px}
+.trending-card{min-width:140px;scroll-snap-align:start;flex-shrink:0}
+
+/* --- CORRELATION BAR --- */
+.corr-bar{height:6px;border-radius:3px;background:linear-gradient(90deg,#ff4444,#ffaa00,#00ff88);position:relative}
+.corr-marker{position:absolute;top:-4px;width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid #00ff88;transform:translateX(-50%)}
+
+/* --- QWEN AI PANEL --- */
+@keyframes ai-pulse{0%,100%{opacity:.4}50%{opacity:1}}
+.ai-loading{animation:ai-pulse 1.2s ease-in-out infinite}
+.ai-panel{position:relative;overflow:hidden}
+.ai-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#00d4ff,#00ff88,transparent);opacity:0;transition:opacity .3s}
+.ai-panel.loading::before{opacity:1;animation:scanline 2s linear infinite}
+.ai-btn{font-family:'Orbitron',sans-serif;font-size:.65rem;letter-spacing:.15em;text-transform:uppercase;padding:.5rem 1.2rem;border-radius:6px;border:1px solid rgba(0,212,255,.3);background:rgba(0,212,255,.08);color:#00d4ff;cursor:pointer;transition:all .3s;display:inline-flex;align-items:center;gap:.5rem}
+.ai-btn:hover{background:rgba(0,212,255,.15);border-color:#00d4ff;box-shadow:0 0 20px rgba(0,212,255,.15)}
+.ai-btn:disabled{opacity:.4;cursor:not-allowed}
+.ai-btn.running{border-color:#00ff88;color:#00ff88;background:rgba(0,255,136,.08)}
+.ai-tag{font-family:'JetBrains Mono',monospace;font-size:.6rem;padding:.2rem .5rem;border-radius:4px;display:inline-block}
+.ai-tag-bull{background:rgba(0,255,136,.1);color:#00ff88;border:1px solid rgba(0,255,136,.2)}
+.ai-tag-bear{background:rgba(255,68,68,.1);color:#ff4444;border:1px solid rgba(255,68,68,.2)}
+.ai-tag-neutral{background:rgba(255,170,0,.1);color:#ffaa00;border:1px solid rgba(255,170,0,.2)}
+.ai-driver{border-left:2px solid #00d4ff;padding:.4rem .8rem;margin-bottom:.4rem;background:rgba(0,212,255,.03);border-radius:0 4px 4px 0;font-family:'JetBrains Mono',monospace;font-size:.75rem;color:#c8d6e5}
+.whale-classified{border-left:3px solid;padding:.5rem .8rem;margin-bottom:.5rem;border-radius:0 6px 6px 0;font-family:'JetBrains Mono',monospace;font-size:.78rem;transition:all .3s}
+.whale-classified:hover{background:rgba(255,255,255,.02)}
+.whale-classified.bullish{border-color:#00ff88;background:rgba(0,255,136,.03)}
+.whale-classified.bearish{border-color:#ff4444;background:rgba(255,68,68,.03)}
+.whale-classified.neutral{border-color:#ffaa00;background:rgba(255,170,0,.03)}
+.trade-dec-card{border:1px solid rgba(0,212,255,.1);border-radius:8px;padding:1rem;background:rgba(0,212,255,.02);transition:all .3s}
+.trade-dec-card:hover{border-color:rgba(0,212,255,.25);background:rgba(0,212,255,.04)}
+</style>
+</head>
+<body>
+
+<!-- SCANLINE EFFECT -->
+<div class="scanline"></div>
+<!-- PROGRESS BAR -->
+<div id="progress" style="width:0%"></div>
+
+<!-- ============================================ -->
+<!-- SECTION 1: HEADER -->
+<!-- ============================================ -->
+<header class="relative min-h-[60vh] flex flex-col items-center justify-center text-center px-4 overflow-hidden">
+  <!-- Background grid -->
+  <div class="absolute inset-0 opacity-[0.03]" style="background-image:linear-gradient(rgba(0,212,255,.3) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.3) 1px,transparent 1px);background-size:60px 60px"></div>
+  <!-- Radial glow -->
+  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full" style="background:radial-gradient(circle,rgba(0,212,255,.06) 0%,transparent 70%)"></div>
+
+  <div class="relative z-10">
+    <div class="flex items-center justify-center gap-2 mb-6">
+      <div class="live-dot"></div>
+      <span class="font-mono text-neon text-xs tracking-[.2em] uppercase">Live</span>
+    </div>
+    <h1 class="font-display text-3xl md:text-5xl lg:text-6xl font-black tracking-wider text-white glow-cyan leading-tight">
+      WhalePulse AI
+    </h1>
+    <p class="font-display text-sm md:text-base tracking-[.25em] text-cyan mt-3 uppercase">Cross-Market Intelligence Engine</p>
+    <div class="flex items-center justify-center gap-4 mt-6 font-mono text-xs text-dimText">
+      <span class="px-3 py-1 border border-cyan/20 rounded-full">Bitget AI Hackathon S2</span>
+      <span class="px-3 py-1 border border-neon/20 rounded-full" id="header-date">—</span>
+      <span class="px-3 py-1 border border-amber/20 rounded-full">Event-Driven Agent | Paper Trading</span>
+    </div>
+  </div>
+</header>
+
+<!-- ============================================ -->
+<!-- SECTION 2: MARKET SNAPSHOT -->
+<!-- ============================================ -->
+<section id="market-snapshot" class="max-w-7xl mx-auto px-4 py-16 reveal">
+  <h2 class="font-display text-lg tracking-[.15em] text-cyan mb-2 uppercase">Market Snapshot</h2>
+  <div class="flex items-center gap-3 mb-8">
+    <div class="flex items-center gap-1.5"><div class="live-dot" style="width:6px;height:6px"></div><span class="font-mono text-xs text-neon tracking-wider">LIVE PRICES</span></div>
+    <span class="font-mono text-xs text-dimText">Auto-refresh 30s &nbsp;|&nbsp; Binance + CoinGecko</span>
+  </div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="snapshot-grid">
+    <!-- Cards injected by JS -->
+  </div>
+</section>
+
+<!-- ============================================ -->
+<!-- SECTION 2B: rTOKEN (TOKENIZED US STOCKS) -->
+<!-- ============================================ -->
+<section id="rtoken-section" class="max-w-7xl mx-auto px-4 py-16 reveal">
+  <h2 class="font-display text-lg tracking-[.15em] text-cyan mb-2 uppercase">rToken — Tokenized US Stocks</h2>
+  <div class="flex items-center gap-3 mb-8">
+    <div class="flex items-center gap-1.5"><div class="live-dot" style="width:6px;height:6px"></div><span class="font-mono text-xs text-neon tracking-wider">LIVE via Bitget API</span></div>
+    <span class="font-mono text-xs text-dimText">S2 Track: Agentic Trading</span>
+  </div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="rtoken-grid">
+    <!-- Injected by JS -->
+  </div>
+</section>
+
+<!-- ============================================ -->
+<!-- SECTION 2C: EVENT-DRIVEN AGENT -->
+<!-- ============================================ -->
+<section id="agent-events" class="max-w-7xl mx-auto px-4 py-16 reveal">
+  <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
+    <div>
+      <h2 class="font-display text-lg tracking-[.15em] text-cyan uppercase">Event-Driven Agent Loop</h2>
+      <p class="font-mono text-xs text-dimText mt-1">Autonomous event detection → Qwen analysis → Trading signal</p>
+    </div>
+    <button id="btn-agent" class="ai-btn" onclick="runAgentLoop()">
+      <span class="live-dot" style="width:6px;height:6px"></span> Run Agent Scan
+    </button>
+  </div>
+  <div id="agent-panel" class="ai-panel glass p-6">
+    <div id="agent-idle" class="text-center py-8">
+      <p class="font-mono text-sm text-dimText">Click <span class="text-cyan">"Run Agent Scan"</span> to detect market events and generate autonomous responses</p>
+      <p class="font-mono text-xs text-dimText/60 mt-2">Scans prices, whale alerts, rToken divergences, funding anomalies</p>
+    </div>
+    <div id="agent-loading" class="text-center py-8 hidden">
+      <p class="font-display text-sm text-cyan ai-loading tracking-widest">SCANNING MARKET EVENTS...</p>
+      <p class="font-mono text-xs text-dimText mt-2">Detecting events → Qwen analysis → Action classification</p>
+    </div>
+    <div id="agent-result" class="hidden">
+      <div class="flex items-center gap-4 mb-6 flex-wrap">
+        <div id="agent-state-tag" class="ai-tag ai-tag-neutral"></div>
+        <div id="agent-next-scan" class="font-mono text-xs text-dimText"></div>
+      </div>
+      <div class="space-y-3" id="agent-events-list"></div>
+    </div>
+    <div id="agent-error" class="hidden text-center py-8">
+      <p class="font-mono text-sm text-danger" id="agent-error-msg"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ -->
+<!-- SECTION 3: FEAR & GREED GAUGE -->
+<!-- ============================================ -->
+<section id="fear-greed" class="max-w-4xl mx-auto px-4 py-16 reveal">
+  <h2 class="font-display text-lg tracking-[.15em] text-cyan mb-8 uppercase">Fear &amp; Greed Index</h2>
+  <div class="glass p-8 flex flex-col lg:flex-row items-center gap-8">
+    <div class="flex-1 flex flex-col items-center">
+      <div id="gauge-chart" style="width:320px;height:220px"></div>
+      <p id="fg-label" class="font-mono text-sm text-amber mt-2 glow-amber text-center">Loading live Fear &amp; Greed data...</p>
+    </div>
+    <div class="flex-1">
+      <p class="font-mono text-xs text-dimText mb-3 tracking-widest uppercase">7-Day Trend</p>
+      <div id="fear-trend" style="width:100%;height:120px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ -->
+<!-- SECTION 4: MEME TOKEN SCANNER -->
+<!-- ============================================ -->
+<section id="meme-scanner" class="max-w-7xl mx-auto px-4 py-16 reveal">
+  <h2 class="font-display text-lg tracking-[.15em] text-cyan mb-8 uppercase">Meme Token Scanner</h2>
+  <div class="glass overflow-x-auto">
+    <table class="data-table">
+      <thead><tr>
+        <th>Token</th><th>Price</th><th>24h %</th><th>Volume</th><th>Trades</th><th>Signal</th>
+      </tr></thead>
+      <tbody id="meme-tbody"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================================ -->
+<!-- SECTION 5: WHALE FLOW & DERIVATIVES -->
+<!-- ============================================ -->
+<section id="whale-flow" class="max-w-7xl mx-auto px-4 py-16 reveal">
+  <h2 class="font-display text-lg tracking-[.15em] text-cyan mb-8 uppercase">Whale Flow &amp; Derivatives Intelligence</h2>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Left: Derivatives -->
+    <div class="glass p-6">
+      <h3 class="font-display text-sm tracking-[.15em] text-neon mb-5 uppercase">Derivatives Signals</h3>
+      <div id="deriv-metrics" class="space-y-4 font-mono text-sm"></div>
+    </div>
+    <!-- Right: Whale Alerts -->
+    <div class="glass p-6">
+      <h3 class="font-display text-sm tracking-[.15em] text-amber mb-5 uppercase">Whale Alert Intelligence</h3>
+      <div id="whale-alerts"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ -->
+<!-- SECTION 6: TRADFI-CRYPTO BRIDGE -->
+<!-- ============================================ -->
+<section id="tradfi-bridge" class="max-w-7xl mx-auto px-4 py-16 reveal">
+  <h2 class="font-display text-lg tracking-[.15em] text-cyan mb-2 uppercase">Cross-Chain Intelligence</h2>
+  <p class="font-mono text-xs text-dimText mb-8">ETH &amp; BTC Correlation — On-Chain Flow Analysis</p>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="glass p-6 space-y-4" id="tradfi-findings"></div>
+    <div class="glass p-6 flex flex-col justify-between">
+      <h3 class="font-display text-xs tracking-[.15em] text-neon mb-4 uppercase">Correlation Monitor</h3>
+      <div class="space-y-5" id="corr-section"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ -->
+<!-- SECTION 7: TRENDING SIGNALS -->
+<!-- ============================================ -->
+<section id="trending" class="max-w-7xl mx-auto px-4 py-16 reveal">
+  <h2 class="font-display text-lg tracking-[.15em] text-cyan mb-8 uppercase">Trending Search Signals</h2>
+  <div class="mb-6">
+    <p class="font-mono text-xs text-dimText mb-3 tracking-widest uppercase">CoinGecko Trending</p>
+    <div class="trending-scroll" id="cg-trending"></div>
+  </div>
+  <div>
+    <p class="font-mono text-xs text-dimText mb-3 tracking-widest uppercase">Solana DEX Trending</p>
+    <div class="trending-scroll" id="sol-trending"></div>
+  </div>
+</section>
+
+<!-- ============================================ -->
+<!-- SECTION 8: SOCIAL SENTIMENT -->
+<!-- ============================================ -->
+<section id="sentiment" class="max-w-7xl mx-auto px-4 py-16 reveal">
+  <h2 class="font-display text-lg tracking-[.15em] text-cyan mb-8 uppercase">Social Sentiment Aggregation</h2>
+  <!-- Pipeline -->
+  <div class="glass p-6 mb-6">
+    <div class="flex flex-wrap items-center justify-center gap-2 md:gap-0">
+      <div class="arch-box !min-w-[120px]"><p class="font-display text-[.65rem] text-cyan tracking-widest">SOURCES</p><p class="font-mono text-[.7rem] mt-1 text-dimText">X / News / Polymarket</p></div>
+      <div class="arch-arrow px-2">→</div>
+      <div class="arch-box !min-w-[120px]"><p class="font-display text-[.65rem] text-neon tracking-widest">NLP ENGINE</p><p class="font-mono text-[.7rem] mt-1 text-dimText">Sentiment Parser</p></div>
+      <div class="arch-arrow px-2">→</div>
+      <div class="arch-box !min-w-[120px]"><p class="font-display text-[.65rem] text-amber tracking-widest">SCORE</p><p class="font-mono text-[.7rem] mt-1 text-dimText">38 / 100</p></div>
+      <div class="arch-arrow px-2">→</div>
+      <div class="arch-box !min-w-[120px]"><p class="font-display text-[.65rem] text-danger tracking-widest">SIGNAL</p><p class="font-mono text-[.7rem] mt-1 text-dimText">Bearish-Neutral</p></div>
+    </div>
+  </div>
+  <!-- Source cards -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="sentiment-cards"></div>
+</section>
+
+<!-- ============================================ -->
+<!-- SECTION 8A: QWEN AI SENTIMENT ANALYSIS -->
+<!-- ============================================ -->
+<section id="qwen-status-banner" class="max-w-7xl mx-auto px-4 pt-16 reveal">
+  <div id="qwen-banner" class="glass p-4 flex items-center justify-between flex-wrap gap-3" style="border-color:rgba(255,170,0,.2)">
+    <div class="flex items-center gap-3">
+      <span id="qwen-dot" class="inline-block w-3 h-3 rounded-full bg-amber"></span>
+      <span class="font-display text-xs tracking-[.15em] text-amber uppercase">Qwen AI Status</span>
+      <span id="qwen-status-text" class="font-mono text-xs text-dimText">Checking connectivity...</span>
+    </div>
+    <button class="ai-btn" onclick="checkQwenHealth()" style="padding:.3rem .8rem;font-size:.55rem">Recheck</button>
+  </div>
+</section>
+
+<section id="qwen-sentiment" class="max-w-7xl mx-auto px-4 py-16 reveal">
+  <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
+    <div>
+      <h2 class="font-display text-lg tracking-[.15em] text-cyan uppercase">Qwen AI Sentiment Engine</h2>
+      <p class="font-mono text-xs text-dimText mt-1">Powered by Qwen 3.8 Max via OpenRouter</p>
+    </div>
+    <button id="btn-sentiment" class="ai-btn" onclick="runSentiment()">
+      <span class="live-dot" style="width:6px;height:6px"></span> Run Analysis
+    </button>
+  </div>
+  <div id="qwen-sentiment-panel" class="ai-panel glass p-6">
+    <div id="qwen-sentiment-idle" class="text-center py-8">
+      <p class="font-mono text-sm text-dimText">Click <span class="text-cyan">"Run Analysis"</span> to feed live market data through Qwen AI</p>
+      <p class="font-mono text-xs text-dimText/60 mt-2">Aggregates prices, derivatives, Fear &amp; Greed, trending tokens, and news headlines</p>
+    </div>
+    <div id="qwen-sentiment-loading" class="text-center py-8 hidden">
+      <p class="font-display text-sm text-cyan ai-loading tracking-widest">PROCESSING MARKET INTELLIGENCE...</p>
+      <p class="font-mono text-xs text-dimText mt-2">Qwen is analyzing cross-market signals</p>
+    </div>
+    <div id="qwen-sentiment-result" class="hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Score + Classification -->
+        <div class="flex flex-col items-center justify-center">
+          <p class="font-mono text-xs text-dimText uppercase tracking-widest mb-2">Overall Score</p>
+          <div id="qs-score" class="font-display text-5xl text-amber glow-amber">—</div>
+          <div id="qs-class" class="ai-tag ai-tag-neutral mt-2">—</div>
+          <div id="qs-contrarian" class="mt-3 font-mono text-xs text-dimText"></div>
+        </div>
+        <!-- Key Drivers -->
+        <div>
+          <p class="font-mono text-xs text-dimText uppercase tracking-widest mb-3">Key Drivers</p>
+          <div id="qs-drivers"></div>
+        </div>
+        <!-- Narrative + Summary -->
+        <div>
+          <p class="font-mono text-xs text-dimText uppercase tracking-widest mb-3">Market Narrative</p>
+          <div id="qs-narrative" class="font-mono text-sm text-cyan mb-4"></div>
+          <p class="font-mono text-xs text-dimText uppercase tracking-widest mb-2">AI Summary</p>
+          <p id="qs-summary" class="font-mono text-sm text-white/80 leading-relaxed"></p>
+          <div id="qs-confidence" class="mt-3 font-mono text-xs text-dimText"></div>
+        </div>
+      </div>
+    </div>
+    <div id="qwen-sentiment-error" class="hidden text-center py-8">
+      <p class="font-mono text-sm text-danger" id="qs-error-msg"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ -->
+<!-- SECTION 8B: QWEN WHALE CLASSIFICATION -->
+<!-- ============================================ -->
+<section id="qwen-whale" class="max-w-7xl mx-auto px-4 py-16 reveal">
+  <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
+    <div>
+      <h2 class="font-display text-lg tracking-[.15em] text-cyan uppercase">Qwen Whale Classifier</h2>
+      <p class="font-mono text-xs text-dimText mt-1">AI-powered whale alert impact classification</p>
+    </div>
+    <button id="btn-whale" class="ai-btn" onclick="runWhaleClassify()">
+      <span class="live-dot" style="width:6px;height:6px"></span> Classify Alerts
+    </button>
+  </div>
+  <div id="qwen-whale-panel" class="ai-panel glass p-6">
+    <div id="qw-idle" class="text-center py-8">
+      <p class="font-mono text-sm text-dimText">Click <span class="text-cyan">"Classify Alerts"</span> to analyze whale transactions via Qwen</p>
+    </div>
+    <div id="qw-loading" class="text-center py-8 hidden">
+      <p class="font-display text-sm text-cyan ai-loading tracking-widest">CLASSIFYING WHALE ACTIVITY...</p>
+    </div>
+    <div id="qw-result" class="hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2" id="qw-alerts-list"></div>
+        <div>
+          <p class="font-mono text-xs text-dimText uppercase tracking-widest mb-3">Smart Money Summary</p>
+          <div id="qw-net-flow" class="mb-3"></div>
+          <div id="qw-smart-money"></div>
+        </div>
+      </div>
+    </div>
+    <div id="qw-error" class="hidden text-center py-8">
+      <p class="font-mono text-sm text-danger" id="qw-error-msg"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ -->
+<!-- SECTION 8C: QWEN TRADE DECISIONS -->
+<!-- ============================================ -->
+<section id="qwen-trades" class="max-w-7xl mx-auto px-4 py-16 reveal">
+  <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
+    <div>
+      <h2 class="font-display text-lg tracking-[.15em] text-cyan uppercase">Qwen Autonomous Decisions</h2>
+      <p class="font-mono text-xs text-dimText mt-1">AI-generated paper trading signals with risk management</p>
+    </div>
+    <button id="btn-trades" class="ai-btn" onclick="runTradeDecisions()">
+      <span class="live-dot" style="width:6px;height:6px"></span> Generate Trades
+    </button>
+  </div>
+  <div id="qwen-trades-panel" class="ai-panel glass p-6">
+    <div id="qt-idle" class="text-center py-8">
+      <p class="font-mono text-sm text-dimText">Click <span class="text-cyan">"Generate Trades"</span> for autonomous paper trading decisions</p>
+    </div>
+    <div id="qt-loading" class="text-center py-8 hidden">
+      <p class="font-display text-sm text-cyan ai-loading tracking-widest">GENERATING TRADE DECISIONS...</p>
+    </div>
+    <div id="qt-result" class="hidden">
+      <div class="flex items-center gap-4 mb-6 flex-wrap">
+        <div id="qt-regime" class="ai-tag ai-tag-neutral"></div>
+        <div id="qt-risk" class="ai-tag ai-tag-neutral"></div>
+        <div id="qt-max-pos" class="font-mono text-xs text-dimText"></div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="qt-cards"></div>
+    </div>
+    <div id="qt-error" class="hidden text-center py-8">
+      <p class="font-mono text-sm text-danger" id="qt-error-msg"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ -->
+<!-- SECTION 9: ARCHITECTURE -->
+<!-- ============================================ -->
+<section id="architecture" class="max-w-7xl mx-auto px-4 py-16 reveal">
+  <h2 class="font-display text-lg tracking-[.15em] text-cyan mb-8 uppercase">System Architecture</h2>
+  <div class="glass p-8 overflow-x-auto">
+    <!-- Main flow -->
+    <div class="flex flex-wrap items-start justify-center gap-3 mb-6" id="arch-flow"></div>
+    <!-- Feedback loop -->
+    <div class="relative mx-auto max-w-3xl mt-2">
+      <div class="border-b border-l border-r border-cyan/20 rounded-b-xl h-10 mx-8"></div>
+      <div class="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 font-mono text-[.65rem] text-cyan bg-void px-3 tracking-widest uppercase">Feedback Loop</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ -->
+<!-- SECTION 10: TRADE LOG -->
+<!-- ============================================ -->
+<section id="trade-log" class="max-w-7xl mx-auto px-4 py-16 reveal">
+  <h2 class="font-display text-lg tracking-[.15em] text-cyan mb-8 uppercase">Autonomous Trade Log</h2>
+  <div class="glass overflow-x-auto">
+    <table class="data-table">
+      <thead><tr>
+        <th>Time</th><th>Asset</th><th>Side</th><th>Size</th><th>Entry</th><th>Rationale</th><th>Status</th>
+      </tr></thead>
+      <tbody id="trade-tbody"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================================ -->
+<!-- SECTION 11: FOOTER -->
+<!-- ============================================ -->
+<footer class="text-center py-12 border-t border-cyan/5">
+  <p class="font-display text-xs tracking-[.2em] text-dimText">WhalePulse AI v2.0 &nbsp;|&nbsp; Bitget AI Hackathon S2 &nbsp;|&nbsp; Powered by Qwen 3.8 Max &nbsp;|&nbsp; Event-Driven Agent &nbsp;|&nbsp; Paper Trading Only — Not Financial Advice</p>
+  <p class="font-mono text-[.65rem] text-dimText/50 mt-2">Track 2: Agentic Trading | rToken Monitoring | Bitget Agent Hub API &nbsp;|&nbsp; hackathon.bitgetops.com</p>
+</footer>
+
+<!-- ============================================ -->
+<!-- JAVASCRIPT -->
+<!-- ============================================ -->
+<script>
+// =============================================
+// DATA
+// =============================================
+// --- Static snapshot used as fallback while live data loads ---
+let snapshotData = [
+  { label:'BTC', value:'...', change:null, icon:'\u20bf' },
+  { label:'ETH', value:'...', change:null, icon:'\u039e' },
+  { label:'SOL', value:'...', change:null, icon:'\u25c8' },
+  { label:'BNB', value:'...', change:null, icon:'\u25c7' },
+  { label:'XRP', value:'...', change:null, icon:'\u25cb' },
+  { label:'DOGE', value:'...', change:null, icon:'\ud83d\udc36' },
+  { label:'Crypto MCap', value:'...', change:null, icon:'\u03a3' },
+  { label:'BTC Dom', value:'...', change:null, icon:'\u25c9' },
+];
+
+let memeData = [
+  { token:'DOGE', price:'...', pct:null, vol:'...', trades:'...', signal:'...' },
+  { token:'PEPE', price:'...', pct:null, vol:'...', trades:'...', signal:'...' },
+  { token:'SHIB', price:'...', pct:null, vol:'...', trades:'...', signal:'...' },
+  { token:'FLOKI', price:'...', pct:null, vol:'...', trades:'...', signal:'...' },
+  { token:'WIF', price:'...', pct:null, vol:'...', trades:'...', signal:'...' },
+  { token:'BONK', price:'...', pct:null, vol:'...', trades:'...', signal:'...' },
+];
+
+const whaleAlerts = [
+  { time:'14:32', text:'Worldcoin whale txns hit 64 in 24h \u2014 2026 high', severity:'high' },
+  { time:'13:18', text:'ETH whale accumulation accelerating \u2014 top holders increasing positions', severity:'high' },
+  { time:'12:05', text:'WLD active addresses + new wallets at 2026 highs alongside price to $0.408', severity:'medium' },
+  { time:'11:41', text:'Large BTC transfers detected across exchanges \u2014 2,400 BTC moved', severity:'high' },
+  { time:'10:22', text:'SOL whale deposits 120K SOL to Binance \u2014 potential distribution', severity:'medium' },
+];
+
+const tradfiFindings = [
+  'BTC dominance rising above 57% — capital rotating to blue chips',
+  'DeFi TVL on Ethereum surpasses $60B in 2026',
+  'Meme coin rotation slowing — volume declining across DOGE, PEPE, SHIB',
+  'Stablecoin market cap hits record $190B — dry powder accumulating',
+];
+
+const cgTrending = [
+  { rank:1, sym:'LAB', name:'LAB' }, { rank:2, sym:'HYPE', name:'Hyperliquid' },
+  { rank:3, sym:'H', name:'Humanity' }, { rank:4, sym:'PORTAL', name:'Portal' },
+  { rank:5, sym:'NEAR', name:'NEAR Protocol' }, { rank:6, sym:'SLX', name:'Solstice' },
+  { rank:7, sym:'SUI', name:'Sui' }, { rank:8, sym:'XLM', name:'Stellar' },
+];
+const solTrending = [
+  { name:'Frog Knight', tag:'MEME' }, { name:'Fingers', tag:'MEME' },
+  { name:'IcePin', tag:'MEME' }, { name:'GTA VI', tag:'CULTURE' },
+  { name:'Dogeus Maximus', tag:'MEME' }, { name:'DEXSwapper', tag:'DEFI' },
+];
+
+const sentimentSources = [
+  { src:'Twitter / X', text:'Meme coin sentiment cautious entering June 2026', score:32, color:'#ff4444' },
+  { src:'News Feeds', text:'BTC dominance rising — altcoin rotation slowing', score:42, color:'#ffaa00' },
+  { src:'Polymarket', text:'149 live memecoin prediction markets active', score:30, color:'#ff4444' },
+];
+
+const archNodes = [
+  { title:'Data Sources', items:['CoinGecko','Bitget Spot API','Bitget rToken','Fear&Greed','Whale Alert','Social Feeds'], color:'#00d4ff' },
+  { title:'Event Detector', items:['Price Move Scanner','rToken Divergence','Funding Anomaly','Whale Flow Parser'], color:'#00d4ff' },
+  { title:'Qwen 3.8 Max', items:['Sentiment NLP','Event Classifier','Trade Generator'], color:'#00ff88' },
+  { title:'Risk Mgr', items:['Position Sizer','Drawdown Monitor','Correlation Filter'], color:'#ffaa00' },
+  { title:'Execution', items:['Bitget Agent Hub','Paper Logger','Alert System'], color:'#ff4444' },
+];
+
+const trades = [];
+
+// Global raw price store — updated by fetchLivePrices
+const livePrices = { BTC: null, ETH: null, SOL: null, BNB: null, XRP: null, DOGE: null, PEPE: null, SHIB: null, FLOKI: null, WIF: null, BONK: null, btcChange: null, ethChange: null };
+
+function buildTrades() {
+  const btc = livePrices.BTC || 60000;
+  const eth = livePrices.ETH || 1550;
+  const sol = livePrices.SOL || 62;
+  const fg = livePrices.fearGreed || 12;
+  const btcChg = livePrices.btcChange;
+  const btcBias = btcChg !== null && btcChg < 0 ? 'SHORT' : 'LONG';
+  const btcRationale = btcChg !== null
+    ? (btcChg < 0 ? `Crowded long (LSR 1.69), Fear ${fg}, price declining ${btcChg.toFixed(1)}%` : `Momentum long, Fear ${fg}, price rising ${btcChg.toFixed(1)}%`)
+    : 'Crowded long (LSR 1.69), Fear ' + fg;
+
+  const btcEntry = +(btc * (1 + (Math.random()*0.004 - 0.002))).toFixed(2);
+  const btcSL = btcBias === 'SHORT' ? +(btcEntry * 1.02).toFixed(2) : +(btcEntry * 0.98).toFixed(2);
+  const btcTP = btcBias === 'SHORT' ? +(btcEntry * 0.97).toFixed(2) : +(btcEntry * 1.03).toFixed(2);
+  const btcPnl = btcBias === 'SHORT' ? +((btcEntry - btc) * 0.5).toFixed(0) : +((btc - btcEntry) * 0.5).toFixed(0);
+
+  const ethEntry = +(eth * (1 + (Math.random()*0.004 - 0.002))).toFixed(2);
+  const ethSL = +(ethEntry * 0.975).toFixed(2);
+  const ethTP = +(ethEntry * 1.03).toFixed(2);
+  const ethPnl = +((eth - ethEntry) * 2).toFixed(0);
+
+  const solEntry = +(sol * (1 + (Math.random()*0.004 - 0.002))).toFixed(2);
+  const solSL = +(solEntry * 1.025).toFixed(2);
+  const solTP = +(solEntry * 0.97).toFixed(2);
+  const solPnl = +((solEntry - sol) * 50).toFixed(0);
+
+  return [
+    { time:'00:15', asset:'BTCUSDT', side:btcBias, size:'0.5 BTC', entry:'$'+btcEntry.toLocaleString(), sl:'$'+btcSL.toLocaleString(), tp:'$'+btcTP.toLocaleString(), rationale:btcRationale, status:'OPEN', pnl:(btcPnl>=0?'+':'')+('$'+btcPnl), pnlDir:btcPnl>=0?'up':'down' },
+    { time:'00:22', asset:'ETHUSDT', side:'LONG', size:'2 ETH', entry:'$'+ethEntry.toLocaleString(), sl:'$'+ethSL, tp:'$'+ethTP, rationale:'ETH whale accumulation accelerating, contrarian long at Fear '+fg, status:'OPEN', pnl:(ethPnl>=0?'+':'')+('$'+ethPnl), pnlDir:ethPnl>=0?'up':'down' },
+    { time:'00:31', asset:'SOLUSDT', side:'SHORT', size:'50 SOL', entry:'$'+solEntry, sl:'$'+solSL, tp:'$'+solTP, rationale:'Meme rotation cooling, SOL beta to BTC decline', status:'OPEN', pnl:(solPnl>=0?'+':'')+('$'+solPnl), pnlDir:solPnl>=0?'up':'down' },
+    { time:'00:45', asset:'HYPE', side:'WATCH', size:'\u2014', entry:'\u2014', sl:'\u2014', tp:'\u2014', rationale:'Trending #2, near ATH, wait for pullback entry', status:'MONITORING', pnl:'\u2014', pnlDir:null },
+  ];
+}
+
+function renderTradeLog() {
+  const t = buildTrades();
+  document.getElementById('trade-tbody').innerHTML = t.map(t => `
+    <tr>
+      <td class="text-dimText">${t.time}</td>
+      <td class="text-white font-bold">${t.asset}</td>
+      <td class="${sideClr(t.side)} font-bold">${t.side}</td>
+      <td>${t.size}</td>
+      <td>${t.entry}</td>
+      <td class="text-dimText max-w-[280px]">${t.rationale}</td>
+      <td>
+        <span class="${t.status==='MONITORING'?'text-amber':'text-white'} text-xs">${t.status}</span>
+        ${t.pnl!=='\u2014' ? `<span class="ml-2 font-bold ${t.pnlDir==='up'?'text-neon':'text-danger'}">${t.pnl}</span>` : ''}
+      </td>
+    </tr>
+  `).join('');
+}
+
+function renderCorrelation() {
+  const btcChg = livePrices.btcChange;
+  const ethChg = livePrices.ethChange !== null ? livePrices.ethChange : -1.5;
+  const btcPct = btcChg !== null ? btcChg : -0.5;
+  const barW = (v) => Math.min(Math.abs(v) * 15, 80);
+  const corrR = (Math.abs(ethChg - btcPct) < 2) ? 0.92 : 0.65;
+  const corrLabel = corrR > 0.8 ? 'High positive correlation' : corrR > 0.5 ? 'Moderate correlation' : 'Low correlation';
+  const corrColor = corrR > 0.8 ? 'text-neon glow-green' : 'text-amber';
+
+  document.getElementById('corr-section').innerHTML = `
+    <div>
+      <div class="flex justify-between font-mono text-xs mb-2">
+        <span class="text-dimText">ETH</span><span class="${ethChg<0?'text-danger':'text-neon'}">${ethChg>0?'+':''}${ethChg.toFixed(2)}%</span>
+      </div>
+      <div class="w-full bg-white/5 rounded-full h-2"><div class="h-2 rounded-full ${ethChg<0?'bg-danger':'bg-neon'}" style="width:${barW(ethChg)}%"></div></div>
+    </div>
+    <div>
+      <div class="flex justify-between font-mono text-xs mb-2">
+        <span class="text-dimText">BTC</span><span class="${btcPct<0?'text-danger':'text-neon'}">${btcPct>0?'+':''}${btcPct.toFixed(2)}%</span>
+      </div>
+      <div class="w-full bg-white/5 rounded-full h-2"><div class="h-2 rounded-full ${btcPct<0?'bg-danger':'bg-neon'}" style="width:${barW(btcPct)}%"></div></div>
+    </div>
+    <div class="border-t border-white/5 pt-4 mt-2">
+      <p class="font-mono text-xs text-dimText mb-2">ETH \u2194 BTC Correlation (24h)</p>
+      <div class="corr-bar"><div class="corr-marker" style="left:${corrR*100}%"></div></div>
+      <p class="font-mono text-xs ${corrColor} mt-2">${corrLabel} detected (r \u2248 ${corrR.toFixed(2)})</p>
+    </div>
+  `;
+}
+
+// =============================================
+// RENDER HELPERS
+// =============================================
+const clr = v => v > 0 ? 'text-neon' : v < 0 ? 'text-danger' : 'text-dimText';
+const signalClr = s => s.includes('Sell') ? 'text-danger' : s === 'Watch' ? 'text-amber' : s.includes('Buy') ? 'text-neon' : 'text-amber';
+const sideClr = s => s === 'SHORT' ? 'text-danger' : s === 'LONG' ? 'text-neon' : s === 'WATCH' ? 'text-amber' : 'text-dimText';
+
+// SECTION 2: MARKET SNAPSHOT — render helper
+function renderSnapshot() {
+  document.getElementById('snapshot-grid').innerHTML = snapshotData.map(d => `
+    <div class="glass p-4 box-glow-cyan flex flex-col gap-1">
+      <div class="flex items-center gap-2">
+        <span class="font-display text-xs text-cyan">${d.icon}</span>
+        <span class="font-mono text-xs text-dimText">${d.label}</span>
+      </div>
+      <span class="font-display text-xl text-white">${d.value}</span>
+      ${d.change !== null ? `<span class="font-mono text-xs ${clr(d.change)}">${d.change > 0 ? '+' : ''}${d.change.toFixed(2)}%</span>` : '<span class="font-mono text-xs text-dimText ai-loading">loading\u2026</span>'}
+    </div>
+  `).join('');
+}
+renderSnapshot(); // show placeholders immediately
+
+// SECTION 4: MEME TOKEN TABLE — render helper
+function renderMemeTable() {
+  document.getElementById('meme-tbody').innerHTML = memeData.map(d => `
+    <tr>
+      <td class="font-bold text-white">${d.token}</td>
+      <td>${d.price}</td>
+      <td class="${d.pct !== null ? clr(d.pct) : 'text-dimText'}">${d.pct !== null ? (d.pct > 0 ? '+' : '') + d.pct.toFixed(2) + '%' : '\u2026'}</td>
+      <td>${d.vol}</td>
+      <td>${d.trades}</td>
+      <td><span class="${signalClr(d.signal)} font-bold">${d.signal}</span></td>
+    </tr>
+  `).join('');
+}
+renderMemeTable();
+
+// =============================================
+// LIVE PRICE ENGINE — Binance + CoinGecko
+// =============================================
+function fmtPrice(n) {
+  if (n >= 1000) return '$' + n.toLocaleString('en-US', {maximumFractionDigits:2});
+  if (n >= 1) return '$' + n.toFixed(2);
+  if (n >= 0.0001) return '$' + n.toPrecision(4);
+  return '$' + n.toPrecision(3);
+}
+function fmtVol(n) {
+  if (n >= 1e9) return '$' + (n/1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return '$' + (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return '$' + (n/1e3).toFixed(1) + 'K';
+  return '$' + n.toFixed(0);
+}
+function fmtTrades(n) {
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(0) + 'K';
+  return String(n);
+}
+function memeSignal(pct) {
+  if (pct > 5) return 'Strong Buy';
+  if (pct > 2) return 'Buy';
+  if (pct < -5) return 'Strong Sell';
+  if (pct < -2) return 'Weak Sell';
+  if (Math.abs(pct) < 0.5) return 'Watch';
+  return 'Neutral';
+}
+
+function applySnapshot(items) {
+  const labelMap = { 'BTC':0, 'ETH':1, 'SOL':2, 'BNB':3, 'XRP':4, 'DOGE':5, 'Crypto MCap':6, 'BTC Dom':7 };
+  items.forEach(d => {
+    const idx = labelMap[d.label];
+    if (idx === undefined) return;
+    if (d.value !== null && d.value !== undefined) {
+      if (d.label === 'Crypto MCap') {
+        const v = d.value;
+        snapshotData[idx].value = v >= 1e12 ? '$' + (v/1e12).toFixed(3) + 'T' : '$' + (v/1e9).toFixed(1) + 'B';
+      } else if (d.label === 'BTC Dom') {
+        snapshotData[idx].value = d.value.toFixed(2) + '%';
+      } else {
+        snapshotData[idx].value = fmtPrice(d.value);
+      }
+      snapshotData[idx].change = d.change;
+    }
+  });
+  // Any remaining placeholders — mark N/A
+  for (let i = 0; i < snapshotData.length; i++) {
+    if (snapshotData[i].value === '...') { snapshotData[i].value = 'N/A'; snapshotData[i].change = null; }
+  }
+}
+
+function applyMeme(items) {
+  items.forEach((d, idx) => {
+    if (idx >= memeData.length) return;
+    if (d.price !== null && d.price !== undefined) memeData[idx].price = fmtPrice(d.price);
+    if (d.pct !== null && d.pct !== undefined) {
+      memeData[idx].pct = d.pct;
+      memeData[idx].signal = memeSignal(d.pct);
+    }
+    if (d.vol !== null && d.vol !== undefined) memeData[idx].vol = fmtVol(d.vol);
+    if (d.trades !== null && d.trades !== undefined) memeData[idx].trades = fmtTrades(d.trades);
+    else if (d.trades === null) memeData[idx].trades = '\u2014';
+  });
+}
+
+function applyFearGreed(fgArr) {
+  if (!fgArr || !fgArr.length) return;
+  const current = fgArr[0].value;
+  const trend = fgArr.map(d => d.value).reverse();
+
+  // Classification and color
+  const fgLabel = current <= 25 ? 'Extreme Fear' : current <= 45 ? 'Fear' : current <= 55 ? 'Neutral' : current <= 75 ? 'Greed' : 'Extreme Greed';
+  const fgColor = current <= 25 ? '#ff4444' : current <= 45 ? '#ffaa00' : current <= 55 ? '#00d4ff' : current <= 75 ? '#00d4ff' : '#00ff88';
+
+  try {
+    // Update gauge needle + value color
+    gaugeChart.setOption({ series:[{ data:[{ value: current }], detail: { color: fgColor } }] });
+
+    // Build date labels from timestamps (or fallback to D-N)
+    let labels;
+    if (fgArr[0].ts) {
+      labels = fgArr.map(d => {
+        const dt = new Date(d.ts * 1000);
+        return dt.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+      }).reverse();
+    } else {
+      labels = fgArr.map((_, i) => 'D-' + (fgArr.length - 1 - i)).reverse();
+    }
+
+    // Dynamic Y-axis range
+    const minVal = Math.min(...trend);
+    const maxVal = Math.max(...trend);
+    const yMin = Math.max(0, Math.floor(minVal / 5) * 5 - 5);
+    const yMax = Math.min(100, Math.ceil(maxVal / 5) * 5 + 5);
+
+    fearTrend.setOption({
+      xAxis: { data: labels },
+      yAxis: { min: yMin, max: yMax },
+      series: [{ data: trend }]
+    });
+
+    // Update classification label
+    const fgEl = document.getElementById('fg-label');
+    if (fgEl) {
+      const contrarian = current < 40 ? 'contrarian opportunity window' : current > 60 ? 'caution \u2014 overheated' : 'balanced sentiment';
+      fgEl.textContent = 'Market in ' + fgLabel + ' zone (' + current + '/100) \u2014 ' + contrarian;
+      fgEl.style.color = fgColor;
+    }
+  } catch(e) { console.warn('[WhalePulse] gauge update error:', e); }
+}
+
+async function fetchLivePrices() {
+  try {
+    const res = await fetch('/api/live-prices');
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || 'API error');
+    const data = json.data;
+
+    // Store raw prices for trade log / correlation
+    if (data.snapshot) {
+      const byLabel = {};
+      data.snapshot.forEach(d => { byLabel[d.label] = d; });
+      if (byLabel['BTC'] && byLabel['BTC'].value) { livePrices.BTC = byLabel['BTC'].value; livePrices.btcChange = byLabel['BTC'].change; }
+      if (byLabel['ETH'] && byLabel['ETH'].value) { livePrices.ETH = byLabel['ETH'].value; livePrices.ethChange = byLabel['ETH'].change; }
+      if (byLabel['SOL'] && byLabel['SOL'].value) livePrices.SOL = byLabel['SOL'].value;
+      if (byLabel['BNB'] && byLabel['BNB'].value) livePrices.BNB = byLabel['BNB'].value;
+      if (byLabel['XRP'] && byLabel['XRP'].value) livePrices.XRP = byLabel['XRP'].value;
+      if (byLabel['DOGE'] && byLabel['DOGE'].value) livePrices.DOGE = byLabel['DOGE'].value;
+    }
+    if (data.meme) {
+      const tokenMap = { DOGE:0, PEPE:1, SHIB:2, FLOKI:3, WIF:4, BONK:5 };
+      data.meme.forEach(m => { if (m.price !== null) livePrices[m.token] = m.price; });
+      // Also get SOL from snapshot if available (it's in CoinGecko but not in snapshot cards)
+    }
+    if (data.fear_greed && data.fear_greed[0]) livePrices.fearGreed = data.fear_greed[0].value;
+
+    if (data.snapshot && data.snapshot.length) applySnapshot(data.snapshot);
+    if (data.meme && data.meme.length) applyMeme(data.meme);
+    if (data.fear_greed) applyFearGreed(data.fear_greed);
+
+    renderSnapshot();
+    renderMemeTable();
+    renderTradeLog();
+    renderCorrelation();
+    console.log('[WhalePulse] Live CoinGecko prices updated at', new Date().toISOString());
+  } catch (e) {
+    console.warn('[WhalePulse] Price fetch failed:', e.message);
+  }
+}
+
+// Fetch on page load — AFTER charts are initialized below
+// Set header date
+document.getElementById('header-date').textContent = new Date().toISOString().slice(0,10);
+
+// SECTION 3: FEAR & GREED GAUGE
+const gaugeChart = echarts.init(document.getElementById('gauge-chart'), null, { renderer:'svg' });
+gaugeChart.setOption({
+  series:[{
+    type:'gauge', startAngle:180, endAngle:0, min:0, max:100, radius:'95%',
+    progress:{ show:true, width:18, roundCap:true,
+      itemStyle:{ color:{ type:'linear', x:0,y:0,x2:1,y2:0, colorStops:[{offset:0,color:'#ff4444'},{offset:.5,color:'#ffaa00'},{offset:1,color:'#00ff88'}] }}
+    },
+    pointer:{ length:'60%', width:4, itemStyle:{ color:'#fff' }},
+    axisLine:{ lineStyle:{ width:18, color:[[.25,'#ff4444'],[.5,'#ffaa00'],[.75,'#00d4ff'],[1,'#00ff88']] }},
+    axisTick:{ show:false }, splitLine:{ show:false },
+    axisLabel:{ distance:28, fontSize:10, color:'#5a6a8a', fontFamily:'JetBrains Mono',
+      formatter:function(v){var m={0:'Extreme\nFear',25:'Fear',50:'Neutral',75:'Greed',100:'Extreme\nGreed'};return m[v]||''}
+    },
+    detail:{ valueAnimation:true, fontSize:36, fontFamily:'Orbitron', color:'#ffaa00',
+      formatter:'{value}', offsetCenter:[0,'15%']
+    },
+    title:{ show:false },
+    data:[{ value:0 }]
+  }]
+});
+
+const fearTrend = echarts.init(document.getElementById('fear-trend'), null, { renderer:'svg' });
+fearTrend.setOption({
+  grid:{ top:10, right:10, bottom:24, left:30 },
+  xAxis:{ type:'category', data:[],
+    axisLine:{ lineStyle:{color:'rgba(0,212,255,.15)'}}, axisLabel:{ fontSize:9, color:'#5a6a8a', fontFamily:'JetBrains Mono' }, axisTick:{show:false}
+  },
+  yAxis:{ type:'value', min:0, max:100, splitLine:{ lineStyle:{color:'rgba(255,255,255,.03)'}},
+    axisLabel:{ fontSize:9, color:'#5a6a8a', fontFamily:'JetBrains Mono' }
+  },
+  series:[{
+    type:'line', data:[], smooth:true, symbol:'circle', symbolSize:6,
+    lineStyle:{ color:'#ffaa00', width:2 },
+    itemStyle:{ color:'#ffaa00', borderColor:'#0a0e17', borderWidth:2 },
+    areaStyle:{ color:{ type:'linear', x:0,y:0,x2:0,y2:1, colorStops:[{offset:0,color:'rgba(255,170,0,.2)'},{offset:1,color:'rgba(255,170,0,0)'}] }},
+    markLine:{ silent:true, data:[{yAxis:50, label:{show:false}, lineStyle:{color:'rgba(0,212,255,.15)',type:'dashed'}}] }
+  }],
+  tooltip:{ trigger:'axis', backgroundColor:'#151d2e', borderColor:'rgba(0,212,255,.2)',
+    textStyle:{ fontFamily:'JetBrains Mono', fontSize:11, color:'#c8d6e5' }
+  }
+});
+
+// NOW fetch live data (charts are ready)
+fetchLivePrices();
+setInterval(fetchLivePrices, 30000);
+
+// SECTION 4: (meme table now rendered by renderMemeTable() above)
+
+// SECTION 5: DERIVATIVES + WHALE ALERTS
+document.getElementById('deriv-metrics').innerHTML = `
+  <div class="flex justify-between items-start border-b border-white/5 pb-3">
+    <div><p class="text-dimText text-xs uppercase tracking-wider">BTC Funding Rate (mean)</p><p class="text-white text-lg font-bold mt-1">0.0075%</p></div>
+    <span class="text-xs text-neon bg-neon/10 px-2 py-1 rounded">Neutral \u2014 slight long bias</span>
+  </div>
+  <div class="border-b border-white/5 pb-3">
+    <p class="text-dimText text-xs uppercase tracking-wider mb-2">Open Interest (BTC)</p>
+    <div class="grid grid-cols-3 gap-2 text-center">
+      <div><p class="text-xs text-dimText">Binance</p><p class="text-white font-bold">106,027</p></div>
+      <div><p class="text-xs text-dimText">Bybit</p><p class="text-white font-bold">55,261</p></div>
+      <div><p class="text-xs text-dimText">OKX</p><p class="text-white font-bold">35,637</p></div>
+    </div>
+  </div>
+  <div class="flex justify-between items-start border-b border-white/5 pb-3">
+    <div><p class="text-dimText text-xs uppercase tracking-wider">Long/Short Ratio (Global)</p><p class="text-white text-lg font-bold mt-1">1.694</p><p class="text-xs text-dimText mt-1">62.9% long / 37.1% short</p></div>
+    <span class="text-xs text-amber bg-amber/10 px-2 py-1 rounded">Crowded long</span>
+  </div>
+  <div class="flex justify-between items-start border-b border-white/5 pb-3">
+    <div><p class="text-dimText text-xs uppercase tracking-wider">Top Traders L/S</p><p class="text-white text-lg font-bold mt-1">1.717</p><p class="text-xs text-dimText mt-1">63.2% long / 36.8% short</p></div>
+    <span class="text-xs text-danger bg-danger/10 px-2 py-1 rounded">Heavy long bias</span>
+  </div>
+  <div class="flex justify-between items-start">
+    <div><p class="text-dimText text-xs uppercase tracking-wider">Taker Buy/Sell Ratio</p><p class="text-white text-lg font-bold mt-1">1.118</p></div>
+    <span class="text-xs text-neon bg-neon/10 px-2 py-1 rounded">Buyers taking control</span>
+  </div>
+`;
+
+document.getElementById('whale-alerts').innerHTML = whaleAlerts.map(a => `
+  <div class="alert-item" style="border-left-color:${a.severity==='high'?'#ff4444':'#ffaa00'}">
+    <span class="text-dimText text-[.65rem]">${a.time} UTC</span>
+    <p class="text-white/90 mt-0.5">${a.text}</p>
+  </div>
+`).join('');
+
+// SECTION 6: TRADFI BRIDGE
+document.getElementById('tradfi-findings').innerHTML = `
+  <h3 class="font-display text-xs tracking-[.15em] text-neon uppercase">Key Intelligence</h3>
+  ${tradfiFindings.map(f => `
+    <div class="flex items-start gap-2">
+      <span class="text-cyan mt-0.5 text-xs">\u25b8</span>
+      <p class="font-mono text-sm text-white/80">${f}</p>
+    </div>
+  `).join('')}
+`;
+
+// SECTION 6: CORRELATION — rendered dynamically from live prices
+renderCorrelation();
+
+// SECTION 7: TRENDING
+document.getElementById('cg-trending').innerHTML = cgTrending.map(t => `
+  <div class="trending-card glass p-3 box-glow-cyan">
+    <span class="font-display text-[.6rem] text-cyan">#${t.rank}</span>
+    <p class="font-display text-sm text-white mt-1">${t.sym}</p>
+    <p class="font-mono text-[.65rem] text-dimText">${t.name}</p>
+  </div>
+`).join('');
+
+document.getElementById('sol-trending').innerHTML = solTrending.map(t => `
+  <div class="trending-card glass p-3 box-glow-green">
+    <span class="font-mono text-[.55rem] text-neon">${t.tag}</span>
+    <p class="font-display text-sm text-white mt-1">${t.name}</p>
+    <p class="font-mono text-[.65rem] text-dimText">Solana</p>
+  </div>
+`).join('');
+
+// SECTION 8: SENTIMENT CARDS
+document.getElementById('sentiment-cards').innerHTML = sentimentSources.map(s => `
+  <div class="glass p-5">
+    <p class="font-display text-xs tracking-[.1em] text-cyan uppercase mb-2">${s.src}</p>
+    <p class="font-mono text-sm text-white/80 mb-3">${s.text}</p>
+    <div class="flex items-center gap-3">
+      <div class="flex-1 bg-white/5 rounded-full h-2"><div class="h-2 rounded-full" style="width:${s.score}%;background:${s.color}"></div></div>
+      <span class="font-mono text-xs" style="color:${s.color}">${s.score}/100</span>
+    </div>
+  </div>
+`).join('');
+
+// SECTION 9: ARCHITECTURE
+document.getElementById('arch-flow').innerHTML = archNodes.map(function(n,i){return (
+  (i > 0 ? '<div class="arch-arrow text-2xl hidden md:flex">\u2192</div>' : '') +
+  '<div class="arch-box" style="border-color:'+n.color+'30">' +
+    '<p class="font-display text-[.65rem] tracking-widest uppercase" style="color:'+n.color+'">'+n.title+'</p>' +
+    '<div class="mt-2 space-y-0.5">'+n.items.map(function(it){return '<p class="font-mono text-[.6rem] text-dimText">'+it+'</p>'}).join('')+'</div>' +
+  '</div>'
+)}).join('');
+
+// SECTION 10: TRADE LOG — rendered dynamically from live prices
+renderTradeLog();
+
+// =============================================
+// GSAP SCROLL ANIMATIONS
+// =============================================
+gsap.registerPlugin(ScrollTrigger);
+document.querySelectorAll('.reveal').forEach(el => {
+  gsap.fromTo(el, { opacity:0, y:40 }, {
+    opacity:1, y:0, duration:0.8, ease:'power2.out',
+    scrollTrigger:{ trigger:el, start:'top 85%', toggleActions:'play none none none' }
+  });
+});
+
+// PROGRESS BAR
+window.addEventListener('scroll', () => {
+  const h = document.documentElement;
+  const pct = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100;
+  document.getElementById('progress').style.width = pct + '%';
+});
+
+// ECHARTS RESIZE
+window.addEventListener('resize', () => { gaugeChart.resize(); fearTrend.resize(); });
+
+// =============================================
+// QWEN AI INTEGRATION — API CALLS + RENDERING
+// =============================================
+
+// Health check on load
+async function checkQwenHealth() {
+  const dot = document.getElementById('qwen-dot');
+  const text = document.getElementById('qwen-status-text');
+  const banner = document.getElementById('qwen-banner');
+  text.textContent = 'Checking...';
+  try {
+    const resp = await fetch('/api/health');
+    const h = await resp.json();
+    if (h.qwen_api_reachable) {
+      dot.className = 'inline-block w-3 h-3 rounded-full bg-[#00ff88]';
+      dot.style.background = '#00ff88';
+      text.textContent = 'Connected to Qwen 3.8 Max — All systems operational';
+      banner.style.borderColor = 'rgba(0,255,136,.2)';
+    } else if (h.qwen_configured) {
+      dot.style.background = '#ff4444';
+      const msg = h.qwen_message || '';
+      const detail = msg.includes('invalid_api_key')
+        ? 'API key rejected — verify your key is activated at console.aliyun.com'
+        : msg.includes('401') ? 'Authentication failed — check key format' : msg.substring(0,100);
+      text.textContent = 'Key configured but API unreachable: ' + detail;
+      text.innerHTML = 'Key configured but API unreachable. <span class="text-amber">Buttons will show the error; fix the key and recheck.</span>';
+      banner.style.borderColor = 'rgba(255,68,68,.2)';
+    } else {
+      dot.style.background = '#ffaa00';
+      text.textContent = 'QWEN_API_KEY not set — export it in your shell environment';
+      banner.style.borderColor = 'rgba(255,170,0,.2)';
+    }
+  } catch(e) {
+    dot.style.background = '#ff4444';
+    text.textContent = 'Cannot reach backend server';
+    banner.style.borderColor = 'rgba(255,68,68,.2)';
+  }
+}
+setTimeout(checkQwenHealth, 500);
+
+function showPanel(prefix, state) {
+  ['idle','loading','result','error'].forEach(s => {
+    const el = document.getElementById(prefix + '-' + s);
+    if (el) el.classList.toggle('hidden', s !== state);
+  });
+  const panel = document.getElementById(prefix + '-panel');
+  if (panel) panel.classList.toggle('loading', state === 'loading');
+}
+
+function setBtn(id, running) {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  btn.disabled = running;
+  btn.classList.toggle('running', running);
+  btn.innerHTML = running
+    ? '<span class="ai-loading">&#9679;</span> Processing...'
+    : '<span class="live-dot" style="width:6px;height:6px"></span> ' + btn.dataset.label;
+}
+
+// Store original labels
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('btn-sentiment').dataset.label = 'Run Analysis';
+  document.getElementById('btn-whale').dataset.label = 'Classify Alerts';
+  document.getElementById('btn-trades').dataset.label = 'Generate Trades';
+});
+
+function tagClass(val) {
+  if (!val) return 'ai-tag-neutral';
+  const v = val.toLowerCase();
+  if (v.includes('bull') || v.includes('accumul') || v.includes('risk-on') || v.includes('greed')) return 'ai-tag-bull';
+  if (v.includes('bear') || v.includes('distribut') || v.includes('risk-off') || v.includes('fear')) return 'ai-tag-bear';
+  return 'ai-tag-neutral';
+}
+
+// ---------- SENTIMENT ----------
+async function runSentiment() {
+  setBtn('btn-sentiment', true);
+  showPanel('qwen-sentiment', 'loading');
+  try {
+    const resp = await fetch('/api/sentiment');
+    const json = await resp.json();
+    if (!json.ok) throw new Error(json.error || 'API error');
+    const d = json.data;
+    if (d.error) throw new Error(d.error + (d.raw ? ': ' + d.raw.substring(0,200) : ''));
+
+    const scoreColor = d.overall_score < 40 ? '#ff4444' : d.overall_score < 60 ? '#ffaa00' : '#00ff88';
+    document.getElementById('qs-score').textContent = d.overall_score;
+    document.getElementById('qs-score').style.color = scoreColor;
+    document.getElementById('qs-class').textContent = d.classification || '—';
+    document.getElementById('qs-class').className = 'ai-tag ' + tagClass(d.classification);
+
+    if (d.contrarian_signal) {
+      document.getElementById('qs-contrarian').innerHTML =
+        'Contrarian Signal: <span class="ai-tag ' + tagClass(d.contrarian_signal) + '">' + d.contrarian_signal + '</span>';
+    }
+
+    const drivers = d.key_drivers || [];
+    document.getElementById('qs-drivers').innerHTML = drivers.map(function(dr) {
+      return '<div class="ai-driver">' + dr + '</div>';
+    }).join('');
+
+    document.getElementById('qs-narrative').textContent = d.narrative_rotation || '—';
+    document.getElementById('qs-summary').textContent = d.summary || '—';
+
+    if (d.confidence != null) {
+      document.getElementById('qs-confidence').innerHTML =
+        'Confidence: <span class="text-cyan">' + (d.confidence * 100).toFixed(0) + '%</span>';
+    }
+
+    showPanel('qwen-sentiment', 'result');
+
+    // Update the static sentiment pipeline with live score
+    updateSentimentPipeline(d);
+  } catch (e) {
+    document.getElementById('qs-error-msg').textContent = 'Error: ' + e.message;
+    showPanel('qwen-sentiment', 'error');
+  }
+  setBtn('btn-sentiment', false);
+}
+
+function updateSentimentPipeline(d) {
+  // Update the static pipeline score and signal in section 8
+  const pipeBoxes = document.querySelectorAll('#sentiment .arch-box');
+  if (pipeBoxes.length >= 4) {
+    pipeBoxes[2].querySelector('p:last-child').textContent = (d.overall_score || '—') + ' / 100';
+    const cls = d.classification || 'Unknown';
+    pipeBoxes[3].querySelector('p:last-child').textContent = cls;
+  }
+}
+
+// ---------- WHALE CLASSIFY ----------
+async function runWhaleClassify() {
+  setBtn('btn-whale', true);
+  showPanel('qw', 'loading');
+  try {
+    const resp = await fetch('/api/whale-classify');
+    const json = await resp.json();
+    if (!json.ok) throw new Error(json.error || 'API error');
+    const d = json.data;
+    if (d.error) throw new Error(d.error + (d.raw ? ': ' + d.raw.substring(0,200) : ''));
+
+    const alerts = d.alerts || [];
+    document.getElementById('qw-alerts-list').innerHTML = alerts.map(function(a) {
+      const impl = (a.implication || 'neutral').toLowerCase();
+      const cssClass = impl.includes('bull') ? 'bullish' : impl.includes('bear') ? 'bearish' : 'neutral';
+      return '<div class="whale-classified ' + cssClass + '">' +
+        '<div class="flex items-center justify-between flex-wrap gap-2 mb-1">' +
+          '<span class="text-white text-sm font-bold">' + (a.asset || '?') + '</span>' +
+          '<div class="flex gap-2">' +
+            '<span class="ai-tag ' + tagClass(a.direction) + '">' + (a.direction || '?') + '</span>' +
+            '<span class="ai-tag ' + tagClass(a.implication) + '">' + (a.implication || '?') + '</span>' +
+            '<span class="ai-tag ' + tagClass(a.impact === 'high' ? 'bear' : 'neutral') + '">' + (a.impact || '?') + ' impact</span>' +
+          '</div>' +
+        '</div>' +
+        '<p class="text-white/70 text-sm">' + (a.original || '') + '</p>' +
+        (a.action ? '<p class="text-cyan text-xs mt-1">\u25b8 ' + a.action + '</p>' : '') +
+      '</div>';
+    }).join('');
+
+    document.getElementById('qw-net-flow').innerHTML =
+      '<p class="font-mono text-xs text-dimText mb-1">Net Flow Bias</p>' +
+      '<span class="ai-tag ' + tagClass(d.net_flow_bias) + '">' + (d.net_flow_bias || '—') + '</span>';
+
+    document.getElementById('qw-smart-money').innerHTML =
+      '<p class="font-mono text-xs text-dimText mb-1 mt-3">Smart Money Direction</p>' +
+      '<span class="ai-tag ' + tagClass(d.smart_money_direction) + '">' + (d.smart_money_direction || '—') + '</span>';
+
+    showPanel('qw', 'result');
+  } catch (e) {
+    document.getElementById('qw-error-msg').textContent = 'Error: ' + e.message;
+    showPanel('qw', 'error');
+  }
+  setBtn('btn-whale', false);
+}
+
+// ---------- rTOKEN PRICES ----------
+async function fetchRTokenPrices() {
+  try {
+    const res = await fetch('/api/rtoken-prices');
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || 'API error');
+    const tokens = json.data || [];
+    const grid = document.getElementById('rtoken-grid');
+    if (!grid || !tokens.length) return;
+    grid.innerHTML = tokens.map(function(t) {
+      const pct = (t.change24h * 100);
+      const colorClass = pct >= 0 ? 'text-neon' : 'text-danger';
+      const glowClass = pct >= 0 ? 'box-glow-green' : 'box-glow-amber';
+      return '<div class="glass p-4 ' + glowClass + ' flex flex-col gap-1">' +
+        '<div class="flex items-center gap-2">' +
+          '<span class="font-display text-xs text-cyan">$</span>' +
+          '<span class="font-mono text-xs text-dimText">' + t.label + '</span>' +
+        '</div>' +
+        '<span class="font-display text-xl text-white">$' + t.price.toLocaleString('en-US', {maximumFractionDigits:2}) + '</span>' +
+        '<span class="font-mono text-xs ' + colorClass + '">' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%</span>' +
+        '<div class="flex justify-between font-mono text-[.6rem] text-dimText mt-1">' +
+          '<span>H: $' + t.high24h.toFixed(2) + '</span>' +
+          '<span>L: $' + t.low24h.toFixed(2) + '</span>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+    console.log('[WhalePulse] rToken prices updated:', tokens.length, 'pairs');
+  } catch(e) {
+    console.warn('[WhalePulse] rToken fetch failed:', e.message);
+  }
+}
+// Fetch rTokens on load and every 60s
+fetchRTokenPrices();
+setInterval(fetchRTokenPrices, 60000);
+
+// ---------- AGENT EVENT LOOP ----------
+async function runAgentLoop() {
+  var btn = document.getElementById('btn-agent');
+  if (btn) { btn.disabled = true; btn.classList.add('running'); btn.innerHTML = '<span class="ai-loading">&#9679;</span> Scanning...'; }
+  showPanel('agent', 'loading');
+  try {
+    const resp = await fetch('/api/agent-events');
+    const json = await resp.json();
+    if (!json.ok) throw new Error(json.error || 'API error');
+    const d = json.data;
+    if (d.error) throw new Error(d.error + (d.raw ? ': ' + d.raw.substring(0,200) : ''));
+
+    var stateTag = document.getElementById('agent-state-tag');
+    if (stateTag) {
+      stateTag.textContent = 'Agent: ' + (d.agent_state || 'scanning');
+      stateTag.className = 'ai-tag ' + tagClass(d.agent_state === 'trading' ? 'bull' : d.agent_state === 'alert' ? 'bear' : 'neutral');
+    }
+    var nextScan = document.getElementById('agent-next-scan');
+    if (nextScan) nextScan.textContent = 'Next scan: ' + (d.next_scan_seconds || 60) + 's';
+
+    var list = document.getElementById('agent-events-list');
+    var events = d.events || [];
+    if (list) {
+      list.innerHTML = events.map(function(ev) {
+        var sevColor = ev.severity === 'critical' ? '#ff4444' : ev.severity === 'high' ? '#ffaa00' : ev.severity === 'medium' ? '#00d4ff' : '#5a6a8a';
+        var actColor = ev.action.includes('long') ? '#00ff88' : ev.action.includes('short') ? '#ff4444' : ev.action === 'monitor' ? '#ffaa00' : '#5a6a8a';
+        return '<div class="glass p-4" style="border-left:3px solid ' + sevColor + '">' +
+          '<div class="flex items-center justify-between mb-2 flex-wrap gap-2">' +
+            '<div class="flex items-center gap-2">' +
+              '<span class="ai-tag" style="background:' + sevColor + '20;color:' + sevColor + ';border:1px solid ' + sevColor + '40">' + (ev.severity || '?') + '</span>' +
+              '<span class="font-mono text-xs text-white">' + (ev.event_type || '?').replace(/_/g,' ') + '</span>' +
+            '</div>' +
+            '<div class="flex items-center gap-2">' +
+              '<span class="font-mono text-xs font-bold" style="color:' + actColor + '">' + (ev.action || 'no_action').replace(/_/g,' ').toUpperCase() + '</span>' +
+              (ev.asset ? '<span class="font-mono text-xs text-cyan">' + ev.asset + '</span>' : '') +
+              (ev.confidence != null ? '<span class="font-mono text-[.6rem] text-dimText">' + (ev.confidence * 100).toFixed(0) + '% conf</span>' : '') +
+            '</div>' +
+          '</div>' +
+          '<p class="font-mono text-sm text-white/80">' + (ev.description || '') + '</p>' +
+          (ev.reasoning ? '<p class="font-mono text-xs text-dimText mt-1">' + ev.reasoning + '</p>' : '') +
+        '</div>';
+      }).join('');
+    }
+    showPanel('agent', 'result');
+  } catch(e) {
+    var errMsg = document.getElementById('agent-error-msg');
+    if (errMsg) errMsg.textContent = 'Error: ' + e.message;
+    showPanel('agent', 'error');
+  }
+  if (btn) { btn.disabled = false; btn.classList.remove('running'); btn.innerHTML = '<span class="live-dot" style="width:6px;height:6px"></span> Run Agent Scan'; }
+}
+
+// Store agent button label
+document.addEventListener('DOMContentLoaded', function() {
+  var agentBtn = document.getElementById('btn-agent');
+  if (agentBtn) agentBtn.dataset.label = 'Run Agent Scan';
+});
+
+// ---------- TRADE DECISIONS ----------
+async function runTradeDecisions() {
+  setBtn('btn-trades', true);
+  showPanel('qt', 'loading');
+  try {
+    const resp = await fetch('/api/trade-decisions');
+    const json = await resp.json();
+    if (!json.ok) throw new Error(json.error || 'API error');
+    const d = json.data;
+    if (d.error) throw new Error(d.error + (d.raw ? ': ' + d.raw.substring(0,200) : ''));
+
+    document.getElementById('qt-regime').textContent = 'Regime: ' + (d.market_regime || '—');
+    document.getElementById('qt-regime').className = 'ai-tag ' + tagClass(d.market_regime);
+    document.getElementById('qt-risk').textContent = 'Risk: ' + (d.portfolio_risk || '—');
+    document.getElementById('qt-risk').className = 'ai-tag ' + tagClass(
+      d.portfolio_risk === 'low' ? 'bull' : d.portfolio_risk === 'high' ? 'bear' : 'neutral'
+    );
+    document.getElementById('qt-max-pos').textContent =
+      'Max concurrent: ' + (d.max_concurrent_positions || '—');
+
+    const decs = d.decisions || [];
+    document.getElementById('qt-cards').innerHTML = decs.map(function(t) {
+      const sideColor = t.side === 'LONG' ? '#00ff88' : t.side === 'SHORT' ? '#ff4444' : '#ffaa00';
+      const convTag = t.conviction === 'high' ? 'ai-tag-bull' : t.conviction === 'low' ? 'ai-tag-bear' : 'ai-tag-neutral';
+      return '<div class="trade-dec-card" style="border-left:3px solid ' + sideColor + '">' +
+        '<div class="flex items-center justify-between mb-2">' +
+          '<span class="font-display text-sm text-white">' + (t.asset || '?') + '</span>' +
+          '<div class="flex gap-2">' +
+            '<span class="font-display text-xs" style="color:' + sideColor + '">' + (t.side || '?') + '</span>' +
+            '<span class="ai-tag ' + convTag + '">' + (t.conviction || '?') + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="grid grid-cols-3 gap-2 text-center font-mono text-xs mb-2">' +
+          '<div><p class="text-dimText">Entry</p><p class="text-white">' + (t.entry_price ? '$' + t.entry_price.toLocaleString() : '—') + '</p></div>' +
+          '<div><p class="text-dimText">Stop</p><p class="text-danger">' + (t.stop_loss ? '$' + t.stop_loss.toLocaleString() : '—') + '</p></div>' +
+          '<div><p class="text-dimText">TP</p><p class="text-neon">' + (t.take_profit ? '$' + t.take_profit.toLocaleString() : '—') + '</p></div>' +
+        '</div>' +
+        '<div class="flex gap-2 mb-2">' +
+          '<span class="ai-tag ' + tagClass(t.whale_flow) + '">Whale: ' + (t.whale_flow || '?') + '</span>' +
+          '<span class="ai-tag ' + tagClass(t.sentiment_alignment) + '">Sentiment: ' + (t.sentiment_alignment || '?') + '</span>' +
+          (t.size_pct ? '<span class="font-mono text-xs text-dimText">Size: ' + t.size_pct + '%</span>' : '') +
+        '</div>' +
+        '<p class="font-mono text-xs text-dimText"><span class="text-cyan">\u25b8</span> ' + (t.catalyst || '') + '</p>' +
+        '<p class="font-mono text-xs text-white/60 mt-1">' + (t.rationale || '') + '</p>' +
+      '</div>';
+    }).join('');
+
+    showPanel('qt', 'result');
+  } catch (e) {
+    document.getElementById('qt-error-msg').textContent = 'Error: ' + e.message;
+    showPanel('qt', 'error');
+  }
+  setBtn('btn-trades', false);
+}
+</script>
+</body>
+</html>
