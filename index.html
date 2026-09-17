@@ -224,29 +224,35 @@ body::before{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
 </section>
 
 <!-- ============================================ -->
-<!-- SECTION 4: MEME TOKEN SCANNER -->
+<!-- SECTION 4: TOKENIZED STOCK DIVERGENCE SCANNER -->
 <!-- ============================================ -->
-<section id="meme-scanner" class="max-w-7xl mx-auto px-4 py-16 reveal">
-  <h2 class="font-display text-lg tracking-[.15em] text-cyan mb-8 uppercase">Meme Token Scanner</h2>
+<section id="rtoken-scanner" class="max-w-7xl mx-auto px-4 py-16 reveal">
+  <div class="flex flex-wrap items-baseline justify-between gap-3 mb-3">
+    <h2 class="font-display text-lg tracking-[.15em] text-cyan uppercase">Tokenized Stock Divergence Scanner</h2>
+    <span id="rtoken-regime-badge" class="font-mono text-[.7rem] px-3 py-1 rounded border border-cyan/30 text-cyan tracking-[.2em] uppercase">Market Regime: loading…</span>
+  </div>
+  <p class="font-mono text-xs text-dimText mb-6">rToken (Bitget spot) vs underlying US equity (Yahoo Finance) — live basis, direction, and 7×24 market-hours regime</p>
   <div class="glass overflow-x-auto">
     <table class="data-table">
       <thead><tr>
-        <th>Token</th><th>Price</th><th>24h %</th><th>Volume</th><th>Trades</th><th>Signal</th>
+        <th>Token</th><th>rToken Price</th><th>US Equity</th><th>Basis / Divergence</th><th>Direction</th><th>Regime</th><th>Signal</th>
       </tr></thead>
-      <tbody id="meme-tbody"></tbody>
+      <tbody id="rtoken-tbody"></tbody>
     </table>
   </div>
+  <p id="rtoken-interp" class="font-mono text-[.7rem] text-dimText/70 mt-3"></p>
 </section>
 
 <!-- ============================================ -->
-<!-- SECTION 5: WHALE FLOW & DERIVATIVES -->
+<!-- SECTION 5: STOCK / rTOKEN FLOW & DERIVATIVES -->
 <!-- ============================================ -->
 <section id="whale-flow" class="max-w-7xl mx-auto px-4 py-16 reveal">
-  <h2 class="font-display text-lg tracking-[.15em] text-cyan mb-8 uppercase">Whale Flow &amp; Derivatives Intelligence</h2>
+  <h2 class="font-display text-lg tracking-[.15em] text-cyan mb-2 uppercase">Stock &amp; rToken Flow &amp; Derivatives Intelligence</h2>
+  <p class="font-mono text-xs text-dimText mb-8">Basis (rToken vs underlying) as synthetic funding, 24h Bitget rToken spot volume shifts, dislocation open interest</p>
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <!-- Left: Derivatives -->
+    <!-- Left: rToken Derivatives -->
     <div class="glass p-6">
-      <h3 class="font-display text-sm tracking-[.15em] text-neon mb-5 uppercase">Derivatives Signals</h3>
+      <h3 class="font-display text-sm tracking-[.15em] text-neon mb-5 uppercase">rToken / Stock Derivatives Signals</h3>
       <div id="deriv-metrics" class="space-y-4 font-mono text-sm"></div>
     </div>
     <!-- Right: Whale Alerts -->
@@ -499,14 +505,19 @@ let snapshotData = [
   { label:'BTC Dom', value:'...', change:null, icon:'\u25c9' },
 ];
 
-let memeData = [
-  { token:'DOGE', price:'...', pct:null, vol:'...', trades:'...', signal:'...' },
-  { token:'PEPE', price:'...', pct:null, vol:'...', trades:'...', signal:'...' },
-  { token:'SHIB', price:'...', pct:null, vol:'...', trades:'...', signal:'...' },
-  { token:'FLOKI', price:'...', pct:null, vol:'...', trades:'...', signal:'...' },
-  { token:'WIF', price:'...', pct:null, vol:'...', trades:'...', signal:'...' },
-  { token:'BONK', price:'...', pct:null, vol:'...', trades:'...', signal:'...' },
+// rToken tracker (replaces meme scanner). Populated by /api/stock-divergence.
+let rtokenData = [
+  { label:'rTSLA', stock:'TSLA', rtoken_price:null, us_price:null, spread_pct:null, spread_direction:null, us_market_state:null, signal:null },
+  { label:'rNVDA', stock:'NVDA', rtoken_price:null, us_price:null, spread_pct:null, spread_direction:null, us_market_state:null, signal:null },
+  { label:'rAAPL', stock:'AAPL', rtoken_price:null, us_price:null, spread_pct:null, spread_direction:null, us_market_state:null, signal:null },
+  { label:'rMSFT', stock:'MSFT', rtoken_price:null, us_price:null, spread_pct:null, spread_direction:null, us_market_state:null, signal:null },
+  { label:'rGOOGL', stock:'GOOGL', rtoken_price:null, us_price:null, spread_pct:null, spread_direction:null, us_market_state:null, signal:null },
+  { label:'rMETA', stock:'META', rtoken_price:null, us_price:null, spread_pct:null, spread_direction:null, us_market_state:null, signal:null },
+  { label:'rAMZN', stock:'AMZN', rtoken_price:null, us_price:null, spread_pct:null, spread_direction:null, us_market_state:null, signal:null },
+  { label:'rCOIN', stock:'COIN', rtoken_price:null, us_price:null, spread_pct:null, spread_direction:null, us_market_state:null, signal:null },
 ];
+let rtokenStats = null;
+let rtokenRegime = null;
 
 const whaleAlerts = [
   { time:'14:32', text:'Worldcoin whale txns hit 64 in 24h \u2014 2026 high', severity:'high' },
@@ -658,20 +669,65 @@ function renderSnapshot() {
 }
 renderSnapshot(); // show placeholders immediately
 
-// SECTION 4: MEME TOKEN TABLE — render helper
-function renderMemeTable() {
-  document.getElementById('meme-tbody').innerHTML = memeData.map(d => `
-    <tr>
-      <td class="font-bold text-white">${d.token}</td>
-      <td>${d.price}</td>
-      <td class="${d.pct !== null ? clr(d.pct) : 'text-dimText'}">${d.pct !== null ? (d.pct > 0 ? '+' : '') + d.pct.toFixed(2) + '%' : '\u2026'}</td>
-      <td>${d.vol}</td>
-      <td>${d.trades}</td>
-      <td><span class="${signalClr(d.signal)} font-bold">${d.signal}</span></td>
-    </tr>
-  `).join('');
+// SECTION 4: rTOKEN DIVERGENCE TABLE — render helper
+function regimeLabel(r) {
+  if (!r) return 'LOADING';
+  const map = { weekend:'WEEKEND', pre_market:'PRE-MARKET', regular:'REGULAR HRS', after_hours:'AFTER HOURS', closed:'CLOSED' };
+  return (map[r.regime] || String(r.regime).toUpperCase()) + (r.ny_time ? ' · ' + r.ny_time : '');
 }
-renderMemeTable();
+function shortRegime(r) {
+  if (!r) return '\u2014';
+  const map = { weekend:'WKND', pre_market:'PRE', regular:'RTH', after_hours:'AH', closed:'CLSD' };
+  return map[r.regime] || r.regime || '\u2014';
+}
+function rtokenSignalClass(sig) {
+  if (!sig) return 'text-dimText';
+  if (sig === 'strong_premium') return 'text-neon glow-green';
+  if (sig === 'strong_discount') return 'text-danger';
+  if (sig === 'mild_premium') return 'text-neon';
+  if (sig === 'mild_discount') return 'text-amber';
+  return 'text-dimText';
+}
+function rtokenSignalLabel(sig) {
+  const map = {
+    strong_premium: 'STRONG PREMIUM',
+    strong_discount: 'STRONG DISCOUNT',
+    mild_premium: 'MILD PREMIUM',
+    mild_discount: 'MILD DISCOUNT',
+    neutral: 'NEUTRAL',
+  };
+  return map[sig] || (sig ? String(sig).toUpperCase() : '\u2026');
+}
+function fmtSpread(p) {
+  if (p === null || p === undefined || isNaN(p)) return '\u2026';
+  const s = (p > 0 ? '+' : '') + p.toFixed(2) + '%';
+  return s;
+}
+function fmtUsd(n) {
+  if (n === null || n === undefined || isNaN(n)) return '\u2014';
+  if (n >= 1000) return '$' + Number(n).toLocaleString('en-US', {maximumFractionDigits:2});
+  return '$' + Number(n).toFixed(2);
+}
+function renderRtokenTable() {
+  const tbody = document.getElementById('rtoken-tbody'); if (!tbody) return;
+  tbody.innerHTML = rtokenData.map(d => {
+    const dirLabel = d.spread_direction === 'rtoken_premium' ? 'PREMIUM \u25b2' : (d.spread_direction === 'rtoken_discount' ? 'DISCOUNT \u25bc' : '\u2014');
+    const dirClass = d.spread_direction === 'rtoken_premium' ? 'text-neon' : (d.spread_direction === 'rtoken_discount' ? 'text-danger' : 'text-dimText');
+    return `
+    <tr>
+      <td class="font-bold text-white">$${d.label} <span class="text-dimText text-[.65rem]">/ ${d.stock}</span></td>
+      <td>${fmtUsd(d.rtoken_price)}</td>
+      <td>${fmtUsd(d.us_price)}</td>
+      <td class="${d.spread_pct !== null ? (d.spread_pct >= 0 ? 'text-neon' : 'text-danger') : 'text-dimText'} font-bold">${fmtSpread(d.spread_pct)}</td>
+      <td class="${dirClass} font-mono text-xs">${dirLabel}</td>
+      <td class="text-cyan font-mono text-[.7rem] tracking-wider">${shortRegime(rtokenRegime)}</td>
+      <td><span class="${rtokenSignalClass(d.signal)} font-bold text-xs">${rtokenSignalLabel(d.signal)}</span></td>
+    </tr>`;
+  }).join('');
+  const regimeBadge = document.getElementById('rtoken-regime-badge');
+  if (regimeBadge) regimeBadge.textContent = 'Market Regime: ' + regimeLabel(rtokenRegime);
+}
+renderRtokenTable();
 
 // =============================================
 // LIVE PRICE ENGINE — Binance + CoinGecko
@@ -693,13 +749,94 @@ function fmtTrades(n) {
   if (n >= 1e3) return (n/1e3).toFixed(0) + 'K';
   return String(n);
 }
-function memeSignal(pct) {
-  if (pct > 5) return 'Strong Buy';
-  if (pct > 2) return 'Buy';
-  if (pct < -5) return 'Strong Sell';
-  if (pct < -2) return 'Weak Sell';
-  if (Math.abs(pct) < 0.5) return 'Watch';
-  return 'Neutral';
+// Fetch rToken vs underlying spreads and update Sections 4 + 5
+async function fetchDivergence() {
+  try {
+    const r = await fetch('/api/stock-divergence');
+    const j = await r.json();
+    if (!j.ok || !j.data) return;
+    const d = j.data;
+    rtokenRegime = d.market_regime || null;
+    rtokenStats = d.stats || null;
+    // Index spreads by label
+    const bySym = {};
+    (d.spreads || []).forEach(s => { bySym[s.label] = s; });
+    rtokenData.forEach(row => {
+      const s = bySym[row.label];
+      if (!s) return;
+      row.rtoken_price = s.rtoken_price;
+      row.us_price = s.us_price;
+      row.spread_pct = s.spread_pct;
+      row.spread_direction = s.spread_direction || null;
+      row.us_market_state = s.us_market_state || null;
+      row.signal = s.signal || null;
+      row.volume_24h = s.volume_24h ?? null;
+      row.change_24h_pct = s.change_24h_pct ?? null;
+    });
+    renderRtokenTable();
+    renderRtokenDerivPanel();
+    const interp = document.getElementById('rtoken-interp');
+    if (interp) interp.textContent = d.interpretation || '';
+    console.log('[WhalePulse] rToken divergence refreshed at', new Date().toISOString());
+  } catch (e) { console.warn('[WhalePulse] divergence fetch failed:', e.message); }
+}
+function fmtVolShort(n) {
+  if (!n || isNaN(n)) return '\u2014';
+  if (n >= 1e9) return '$' + (n/1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return '$' + (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return '$' + (n/1e3).toFixed(1) + 'K';
+  return '$' + Number(n).toFixed(0);
+}
+function renderRtokenDerivPanel() {
+  const el = document.getElementById('deriv-metrics'); if (!el) return;
+  const s = rtokenStats;
+  if (!s) { el.innerHTML = '<p class="text-dimText ai-loading">Loading rToken derivatives\u2026</p>'; return; }
+  const meanClr = s.mean_spread_pct === null ? 'text-dimText' : (s.mean_spread_pct >= 0 ? 'text-neon' : 'text-danger');
+  const biasClr = s.basis_bias === 'premium_skew' ? 'text-neon' : (s.basis_bias === 'discount_skew' ? 'text-danger' : 'text-cyan');
+  const biasLabel = { premium_skew:'Premium skew (rToken > stock)', discount_skew:'Discount skew (rToken < stock)', balanced:'Balanced basis', unknown:'\u2014' }[s.basis_bias] || s.basis_bias;
+  const tp = s.top_premium, td = s.top_discount;
+  el.innerHTML = `
+    <div class="flex justify-between items-start border-b border-white/5 pb-3">
+      <div>
+        <p class="text-dimText text-xs uppercase tracking-wider">Mean Basis (rToken \u2212 stock)</p>
+        <p class="${meanClr} text-lg font-bold mt-1">${fmtSpread(s.mean_spread_pct)}</p>
+        <p class="text-xs text-dimText mt-1">|abs mean| ${fmtSpread(s.abs_mean_spread_pct)} \u00b7 acts as synthetic funding rate</p>
+      </div>
+      <span class="text-xs ${biasClr} bg-white/5 px-2 py-1 rounded">${biasLabel}</span>
+    </div>
+    <div class="border-b border-white/5 pb-3">
+      <p class="text-dimText text-xs uppercase tracking-wider mb-2">Basis Open Interest (rToken names)</p>
+      <div class="grid grid-cols-3 gap-2 text-center">
+        <div><p class="text-xs text-dimText">Tracked</p><p class="text-white font-bold">${s.n_tracked}</p></div>
+        <div><p class="text-xs text-dimText">Premium</p><p class="text-neon font-bold">${s.n_premium}</p></div>
+        <div><p class="text-xs text-dimText">Discount</p><p class="text-danger font-bold">${s.n_discount}</p></div>
+      </div>
+    </div>
+    <div class="flex justify-between items-start border-b border-white/5 pb-3">
+      <div>
+        <p class="text-dimText text-xs uppercase tracking-wider">24h rToken Spot Volume (Bitget)</p>
+        <p class="text-white text-lg font-bold mt-1">${fmtVolShort(s.total_volume_24h)}</p>
+        <p class="text-xs text-dimText mt-1">Aggregate quote volume across ${s.n_tracked} rToken pairs</p>
+      </div>
+      <span class="text-xs text-cyan bg-cyan/10 px-2 py-1 rounded">${shortRegime(rtokenRegime)}</span>
+    </div>
+    <div class="flex justify-between items-start border-b border-white/5 pb-3">
+      <div>
+        <p class="text-dimText text-xs uppercase tracking-wider">Top Premium</p>
+        <p class="text-neon text-lg font-bold mt-1">${tp ? '$' + tp.label + ' ' + fmtSpread(tp.spread_pct) : '\u2014'}</p>
+        <p class="text-xs text-dimText mt-1">${tp ? tp.stock + ' underlying ' + fmtUsd(tp.us_price) : ''}</p>
+      </div>
+      <span class="text-xs text-neon bg-neon/10 px-2 py-1 rounded">rToken bid</span>
+    </div>
+    <div class="flex justify-between items-start">
+      <div>
+        <p class="text-dimText text-xs uppercase tracking-wider">Top Discount</p>
+        <p class="text-danger text-lg font-bold mt-1">${td ? '$' + td.label + ' ' + fmtSpread(td.spread_pct) : '\u2014'}</p>
+        <p class="text-xs text-dimText mt-1">${td ? td.stock + ' underlying ' + fmtUsd(td.us_price) : ''}</p>
+      </div>
+      <span class="text-xs text-danger bg-danger/10 px-2 py-1 rounded">rToken offered</span>
+    </div>
+  `;
 }
 
 function applySnapshot(items) {
@@ -725,19 +862,8 @@ function applySnapshot(items) {
   }
 }
 
-function applyMeme(items) {
-  items.forEach((d, idx) => {
-    if (idx >= memeData.length) return;
-    if (d.price !== null && d.price !== undefined) memeData[idx].price = fmtPrice(d.price);
-    if (d.pct !== null && d.pct !== undefined) {
-      memeData[idx].pct = d.pct;
-      memeData[idx].signal = memeSignal(d.pct);
-    }
-    if (d.vol !== null && d.vol !== undefined) memeData[idx].vol = fmtVol(d.vol);
-    if (d.trades !== null && d.trades !== undefined) memeData[idx].trades = fmtTrades(d.trades);
-    else if (d.trades === null) memeData[idx].trades = '\u2014';
-  });
-}
+// applyMeme() removed — meme scanner has been replaced by rToken divergence scanner.
+// See fetchDivergence() which populates rtokenData from /api/stock-divergence.
 
 function applyFearGreed(fgArr) {
   if (!fgArr || !fgArr.length) return;
@@ -804,18 +930,15 @@ async function fetchLivePrices() {
       if (byLabel['DOGE'] && byLabel['DOGE'].value) livePrices.DOGE = byLabel['DOGE'].value;
     }
     if (data.meme) {
-      const tokenMap = { DOGE:0, PEPE:1, SHIB:2, FLOKI:3, WIF:4, BONK:5 };
+      // Keep raw price map only (used by trade log fallbacks); UI no longer renders meme tokens.
       data.meme.forEach(m => { if (m.price !== null) livePrices[m.token] = m.price; });
-      // Also get SOL from snapshot if available (it's in CoinGecko but not in snapshot cards)
     }
     if (data.fear_greed && data.fear_greed[0]) livePrices.fearGreed = data.fear_greed[0].value;
 
     if (data.snapshot && data.snapshot.length) applySnapshot(data.snapshot);
-    if (data.meme && data.meme.length) applyMeme(data.meme);
     if (data.fear_greed) applyFearGreed(data.fear_greed);
 
     renderSnapshot();
-    renderMemeTable();
     renderTradeLog();
     renderCorrelation();
     console.log('[WhalePulse] Live CoinGecko prices updated at', new Date().toISOString());
@@ -875,35 +998,11 @@ fearTrend.setOption({
 fetchLivePrices();
 setInterval(fetchLivePrices, 30000);
 
-// SECTION 4: (meme table now rendered by renderMemeTable() above)
-
-// SECTION 5: DERIVATIVES + WHALE ALERTS
-document.getElementById('deriv-metrics').innerHTML = `
-  <div class="flex justify-between items-start border-b border-white/5 pb-3">
-    <div><p class="text-dimText text-xs uppercase tracking-wider">BTC Funding Rate (mean)</p><p class="text-white text-lg font-bold mt-1">0.0075%</p></div>
-    <span class="text-xs text-neon bg-neon/10 px-2 py-1 rounded">Neutral \u2014 slight long bias</span>
-  </div>
-  <div class="border-b border-white/5 pb-3">
-    <p class="text-dimText text-xs uppercase tracking-wider mb-2">Open Interest (BTC)</p>
-    <div class="grid grid-cols-3 gap-2 text-center">
-      <div><p class="text-xs text-dimText">Binance</p><p class="text-white font-bold">106,027</p></div>
-      <div><p class="text-xs text-dimText">Bybit</p><p class="text-white font-bold">55,261</p></div>
-      <div><p class="text-xs text-dimText">OKX</p><p class="text-white font-bold">35,637</p></div>
-    </div>
-  </div>
-  <div class="flex justify-between items-start border-b border-white/5 pb-3">
-    <div><p class="text-dimText text-xs uppercase tracking-wider">Long/Short Ratio (Global)</p><p class="text-white text-lg font-bold mt-1">1.694</p><p class="text-xs text-dimText mt-1">62.9% long / 37.1% short</p></div>
-    <span class="text-xs text-amber bg-amber/10 px-2 py-1 rounded">Crowded long</span>
-  </div>
-  <div class="flex justify-between items-start border-b border-white/5 pb-3">
-    <div><p class="text-dimText text-xs uppercase tracking-wider">Top Traders L/S</p><p class="text-white text-lg font-bold mt-1">1.717</p><p class="text-xs text-dimText mt-1">63.2% long / 36.8% short</p></div>
-    <span class="text-xs text-danger bg-danger/10 px-2 py-1 rounded">Heavy long bias</span>
-  </div>
-  <div class="flex justify-between items-start">
-    <div><p class="text-dimText text-xs uppercase tracking-wider">Taker Buy/Sell Ratio</p><p class="text-white text-lg font-bold mt-1">1.118</p></div>
-    <span class="text-xs text-neon bg-neon/10 px-2 py-1 rounded">Buyers taking control</span>
-  </div>
-`;
+// SECTION 4 + 5: rToken divergence scanner + rToken/Stock derivatives panel
+// Both are populated by fetchDivergence() which hits /api/stock-divergence.
+renderRtokenDerivPanel();       // shows loading placeholder
+fetchDivergence();              // populate immediately
+setInterval(fetchDivergence, 45000); // refresh every 45s
 
 document.getElementById('whale-alerts').innerHTML = whaleAlerts.map(a => `
   <div class="alert-item" style="border-left-color:${a.severity==='high'?'#ff4444':'#ffaa00'}">
