@@ -1,1414 +1,223 @@
-<!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<!doctype html>
+<html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>WhalePulse AI — Cross-Market Intelligence Engine</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;500;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
-<script>
-tailwind.config={theme:{extend:{colors:{void:'#0a0e17',panel:'#0f1520',panelLight:'#151d2e',cyan:'#00d4ff',neon:'#00ff88',amber:'#ffaa00',danger:'#ff4444',dimText:'#5a6a8a'},fontFamily:{display:['Orbitron','sans-serif'],mono:['JetBrains Mono','monospace'],body:['Inter','sans-serif']}}}}
-</script>
-<style>
-/* --- BASE --- */
-*{margin:0;padding:0;box-sizing:border-box}
-html{background:#0a0e17}
-body{font-family:'Inter',sans-serif;color:#c8d6e5;background:#0a0e17;overflow-x:hidden}
-::-webkit-scrollbar{width:6px}
-::-webkit-scrollbar-track{background:#0a0e17}
-::-webkit-scrollbar-thumb{background:#1a2540;border-radius:3px}
-
-/* --- NOISE OVERLAY --- */
-body::before{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
-  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
-  opacity:.35}
-
-/* --- GLOW UTILITIES --- */
-.glow-cyan{text-shadow:0 0 12px rgba(0,212,255,.5)}
-.glow-green{text-shadow:0 0 12px rgba(0,255,136,.5)}
-.glow-amber{text-shadow:0 0 12px rgba(255,170,0,.5)}
-.glow-red{text-shadow:0 0 12px rgba(255,68,68,.5)}
-.box-glow-cyan{box-shadow:0 0 20px rgba(0,212,255,.08),inset 0 1px 0 rgba(0,212,255,.1)}
-.box-glow-green{box-shadow:0 0 20px rgba(0,255,136,.08),inset 0 1px 0 rgba(0,255,136,.1)}
-.box-glow-amber{box-shadow:0 0 20px rgba(255,170,0,.08),inset 0 1px 0 rgba(255,170,0,.1)}
-
-/* --- GLASS CARD --- */
-.glass{background:rgba(15,21,32,.75);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(0,212,255,.08);border-radius:12px}
-
-/* --- LIVE PULSE --- */
-@keyframes pulse-live{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,255,136,.6)}70%{opacity:1;box-shadow:0 0 0 8px rgba(0,255,136,0)}}
-.live-dot{width:10px;height:10px;border-radius:50%;background:#00ff88;animation:pulse-live 1.8s infinite}
-
-/* --- SCAN LINE --- */
-@keyframes scanline{0%{transform:translateY(-100%)}100%{transform:translateY(100vh)}}
-.scanline{position:fixed;top:0;left:0;width:100%;height:2px;background:linear-gradient(90deg,transparent,rgba(0,212,255,.06),transparent);z-index:9998;pointer-events:none;animation:scanline 8s linear infinite}
-
-/* --- PROGRESS BAR --- */
-#progress{position:fixed;top:0;left:0;height:2px;background:linear-gradient(90deg,#00d4ff,#00ff88);z-index:10000;transition:width .15s}
-
-/* --- SECTION REVEAL --- */
-.reveal{opacity:0;transform:translateY(40px)}
-
-/* --- PIPELINE ARROW --- */
-.pipe-arrow{position:relative;display:flex;align-items:center;justify-content:center}
-.pipe-arrow::after{content:'→';font-size:1.5rem;color:#00d4ff;margin:0 .5rem;font-family:'JetBrains Mono',monospace}
-
-/* --- ARCHITECTURE FLOW --- */
-.arch-box{border:1px solid rgba(0,212,255,.25);border-radius:8px;padding:1rem;background:rgba(0,212,255,.04);min-width:160px;text-align:center;transition:all .3s}
-.arch-box:hover{border-color:#00d4ff;box-shadow:0 0 24px rgba(0,212,255,.15)}
-.arch-arrow{color:#00d4ff;font-family:'JetBrains Mono';font-size:1.5rem;display:flex;align-items:center;justify-content:center}
-
-/* --- TABLE --- */
-.data-table{width:100%;border-collapse:separate;border-spacing:0}
-.data-table thead th{font-family:'JetBrains Mono';font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:#5a6a8a;padding:.75rem 1rem;border-bottom:1px solid rgba(0,212,255,.1);text-align:left}
-.data-table tbody td{font-family:'JetBrains Mono';font-size:.8rem;padding:.65rem 1rem;border-bottom:1px solid rgba(255,255,255,.03)}
-.data-table tbody tr{transition:background .2s}
-.data-table tbody tr:hover{background:rgba(0,212,255,.04)}
-
-/* --- GAUGE --- */
-.gauge-container{position:relative;width:280px;height:160px;margin:0 auto}
-
-/* --- ALERT ITEM --- */
-.alert-item{border-left:2px solid #00d4ff;padding:.6rem .8rem;margin-bottom:.5rem;background:rgba(0,212,255,.03);border-radius:0 6px 6px 0;font-size:.82rem;font-family:'JetBrains Mono';transition:all .3s}
-.alert-item:hover{border-left-color:#00ff88;background:rgba(0,255,136,.04)}
-
-/* --- TRENDING SCROLL --- */
-.trending-scroll{display:flex;gap:1rem;overflow-x:auto;padding-bottom:.5rem;scroll-snap-type:x mandatory}
-.trending-scroll::-webkit-scrollbar{height:4px}
-.trending-scroll::-webkit-scrollbar-thumb{background:#1a2540;border-radius:2px}
-.trending-card{min-width:140px;scroll-snap-align:start;flex-shrink:0}
-
-/* --- CORRELATION BAR --- */
-.corr-bar{height:6px;border-radius:3px;background:linear-gradient(90deg,#ff4444,#ffaa00,#00ff88);position:relative}
-.corr-marker{position:absolute;top:-4px;width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid #00ff88;transform:translateX(-50%)}
-
-/* --- QWEN AI PANEL --- */
-@keyframes ai-pulse{0%,100%{opacity:.4}50%{opacity:1}}
-.ai-loading{animation:ai-pulse 1.2s ease-in-out infinite}
-.ai-panel{position:relative;overflow:hidden}
-.ai-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#00d4ff,#00ff88,transparent);opacity:0;transition:opacity .3s}
-.ai-panel.loading::before{opacity:1;animation:scanline 2s linear infinite}
-.ai-btn{font-family:'Orbitron',sans-serif;font-size:.65rem;letter-spacing:.15em;text-transform:uppercase;padding:.5rem 1.2rem;border-radius:6px;border:1px solid rgba(0,212,255,.3);background:rgba(0,212,255,.08);color:#00d4ff;cursor:pointer;transition:all .3s;display:inline-flex;align-items:center;gap:.5rem}
-.ai-btn:hover{background:rgba(0,212,255,.15);border-color:#00d4ff;box-shadow:0 0 20px rgba(0,212,255,.15)}
-.ai-btn:disabled{opacity:.4;cursor:not-allowed}
-.ai-btn.running{border-color:#00ff88;color:#00ff88;background:rgba(0,255,136,.08)}
-.ai-tag{font-family:'JetBrains Mono',monospace;font-size:.6rem;padding:.2rem .5rem;border-radius:4px;display:inline-block}
-.ai-tag-bull{background:rgba(0,255,136,.1);color:#00ff88;border:1px solid rgba(0,255,136,.2)}
-.ai-tag-bear{background:rgba(255,68,68,.1);color:#ff4444;border:1px solid rgba(255,68,68,.2)}
-.ai-tag-neutral{background:rgba(255,170,0,.1);color:#ffaa00;border:1px solid rgba(255,170,0,.2)}
-.ai-driver{border-left:2px solid #00d4ff;padding:.4rem .8rem;margin-bottom:.4rem;background:rgba(0,212,255,.03);border-radius:0 4px 4px 0;font-family:'JetBrains Mono',monospace;font-size:.75rem;color:#c8d6e5}
-.whale-classified{border-left:3px solid;padding:.5rem .8rem;margin-bottom:.5rem;border-radius:0 6px 6px 0;font-family:'JetBrains Mono',monospace;font-size:.78rem;transition:all .3s}
-.whale-classified:hover{background:rgba(255,255,255,.02)}
-.whale-classified.bullish{border-color:#00ff88;background:rgba(0,255,136,.03)}
-.whale-classified.bearish{border-color:#ff4444;background:rgba(255,68,68,.03)}
-.whale-classified.neutral{border-color:#ffaa00;background:rgba(255,170,0,.03)}
-.trade-dec-card{border:1px solid rgba(0,212,255,.1);border-radius:8px;padding:1rem;background:rgba(0,212,255,.02);transition:all .3s}
-.trade-dec-card:hover{border-color:rgba(0,212,255,.25);background:rgba(0,212,255,.04)}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>WhalePulse AI — Tokenized US Stocks Intelligence</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config={theme:{extend:{colors:{ink:'#07100d',panel:'#0b1712',line:'#16352a',mint:'#78f2bd',lime:'#c7ff6b',gold:'#ffcc66',red:'#ff6b6b',muted:'#759386'},fontFamily:{display:['Chakra Petch','sans-serif'],mono:['IBM Plex Mono','monospace']}}}}
+  </script>
+  <style>
+    *{box-sizing:border-box}html{background:#07100d}body{margin:0;background:#07100d;color:#dcebe4;font-family:'IBM Plex Mono',monospace;overflow-x:hidden}
+    body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.16;background-image:linear-gradient(rgba(120,242,189,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(120,242,189,.06) 1px,transparent 1px);background-size:42px 42px;mask-image:linear-gradient(to bottom,black,transparent 72%)}
+    .panel{background:linear-gradient(145deg,rgba(12,29,23,.94),rgba(7,16,13,.9));border:1px solid #16352a;box-shadow:0 18px 60px rgba(0,0,0,.24)}
+    .ticker-card{position:relative;overflow:hidden;transition:transform .25s,border-color .25s}.ticker-card:hover{transform:translateY(-3px);border-color:#78f2bd}.ticker-card:after{content:"";position:absolute;right:-24px;bottom:-36px;width:92px;height:92px;border:1px solid rgba(120,242,189,.16);transform:rotate(35deg)}
+    .eyebrow{font-family:'Chakra Petch',sans-serif;letter-spacing:.2em;text-transform:uppercase}.display{font-family:'Chakra Petch',sans-serif}
+    .live{width:8px;height:8px;border-radius:50%;background:#78f2bd;box-shadow:0 0 0 0 rgba(120,242,189,.6);animation:pulse 1.8s infinite}@keyframes pulse{70%{box-shadow:0 0 0 8px rgba(120,242,189,0)}}
+    .badge{display:inline-flex;align-items:center;padding:.25rem .55rem;border:1px solid #285a46;border-radius:999px;font-size:.64rem;letter-spacing:.08em;text-transform:uppercase;color:#78f2bd;background:rgba(120,242,189,.05)}
+    .bar{height:6px;border-radius:99px;background:#11261e;overflow:hidden}.bar>i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#78f2bd,#c7ff6b)}
+    table{width:100%;border-collapse:collapse}th,td{padding:.85rem 1rem;text-align:left;border-bottom:1px solid rgba(117,147,134,.12);white-space:nowrap}th{color:#759386;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase}td{font-size:.78rem}tbody tr:hover{background:rgba(120,242,189,.025)}
+    button{transition:.2s}button:hover{transform:translateY(-1px);box-shadow:0 0 24px rgba(120,242,189,.12)}button:disabled{opacity:.45;cursor:not-allowed}
+    .skeleton{background:linear-gradient(90deg,#10231c,#17352a,#10231c);background-size:200% 100%;animation:load 1.4s infinite}@keyframes load{to{background-position:-200% 0}}
+    .section-rule{height:1px;background:linear-gradient(90deg,#78f2bd,transparent)}
+  </style>
 </head>
 <body>
-
-<!-- SCANLINE EFFECT -->
-<div class="scanline"></div>
-<!-- PROGRESS BAR -->
-<div id="progress" style="width:0%"></div>
-
-<!-- ============================================ -->
-<!-- SECTION 1: HEADER -->
-<!-- ============================================ -->
-<header class="relative min-h-[60vh] flex flex-col items-center justify-center text-center px-4 overflow-hidden">
-  <!-- Background grid -->
-  <div class="absolute inset-0 opacity-[0.03]" style="background-image:linear-gradient(rgba(0,212,255,.3) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.3) 1px,transparent 1px);background-size:60px 60px"></div>
-  <!-- Radial glow -->
-  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full" style="background:radial-gradient(circle,rgba(0,212,255,.06) 0%,transparent 70%)"></div>
-
-  <div class="relative z-10">
-    <div class="flex items-center justify-center gap-2 mb-6">
-      <div class="live-dot"></div>
-      <span class="font-mono text-neon text-xs tracking-[.2em] uppercase">Live</span>
-    </div>
-    <h1 class="font-display text-3xl md:text-5xl lg:text-6xl font-black tracking-wider text-white glow-cyan leading-tight">
-      WhalePulse AI
-    </h1>
-    <p class="font-display text-sm md:text-base tracking-[.25em] text-cyan mt-3 uppercase">Cross-Market Intelligence Engine</p>
-    <div class="flex items-center justify-center gap-4 mt-6 font-mono text-xs text-dimText">
-      <span class="px-3 py-1 border border-cyan/20 rounded-full">Bitget AI Hackathon S2</span>
-      <span class="px-3 py-1 border border-neon/20 rounded-full" id="header-date">—</span>
-      <span class="px-3 py-1 border border-amber/20 rounded-full">Event-Driven Agent | Paper Trading</span>
-    </div>
-  </div>
-</header>
-
-<!-- ============================================ -->
-<!-- SECTION 2: MARKET SNAPSHOT -->
-<!-- ============================================ -->
-<section id="market-snapshot" class="max-w-7xl mx-auto px-4 py-16 reveal">
-  <h2 class="font-display text-lg tracking-[.15em] text-cyan mb-2 uppercase">Market Snapshot</h2>
-  <div class="flex items-center gap-3 mb-8">
-    <div class="flex items-center gap-1.5"><div class="live-dot" style="width:6px;height:6px"></div><span class="font-mono text-xs text-neon tracking-wider">LIVE PRICES</span></div>
-    <span class="font-mono text-xs text-dimText">Auto-refresh 30s &nbsp;|&nbsp; Binance + CoinGecko</span>
-  </div>
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="snapshot-grid">
-    <!-- Cards injected by JS -->
-  </div>
-</section>
-
-<!-- ============================================ -->
-<!-- SECTION 2B: rTOKEN (TOKENIZED US STOCKS) -->
-<!-- ============================================ -->
-<section id="rtoken-section" class="max-w-7xl mx-auto px-4 py-16 reveal">
-  <h2 class="font-display text-lg tracking-[.15em] text-cyan mb-2 uppercase">rToken — Tokenized US Stocks</h2>
-  <div class="flex items-center gap-3 mb-8">
-    <div class="flex items-center gap-1.5"><div class="live-dot" style="width:6px;height:6px"></div><span class="font-mono text-xs text-neon tracking-wider">LIVE via Bitget API</span></div>
-    <span class="font-mono text-xs text-dimText">S2 Track: Agentic Trading</span>
-  </div>
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="rtoken-grid">
-    <!-- Injected by JS -->
-  </div>
-</section>
-
-<!-- ============================================ -->
-<!-- SECTION 2C: EVENT-DRIVEN AGENT -->
-<!-- ============================================ -->
-<section id="agent-events" class="max-w-7xl mx-auto px-4 py-16 reveal">
-  <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
-    <div>
-      <h2 class="font-display text-lg tracking-[.15em] text-cyan uppercase">Event-Driven Agent Loop</h2>
-      <p class="font-mono text-xs text-dimText mt-1">Autonomous event detection → Qwen analysis → Trading signal</p>
-    </div>
-    <button id="btn-agent" class="ai-btn" onclick="runAgentLoop()">
-      <span class="live-dot" style="width:6px;height:6px"></span> Run Agent Scan
-    </button>
-  </div>
-  <div id="agent-panel" class="ai-panel glass p-6">
-    <div id="agent-idle" class="text-center py-8">
-      <p class="font-mono text-sm text-dimText">Click <span class="text-cyan">"Run Agent Scan"</span> to detect market events and generate autonomous responses</p>
-      <p class="font-mono text-xs text-dimText/60 mt-2">Scans prices, whale alerts, rToken divergences, funding anomalies</p>
-    </div>
-    <div id="agent-loading" class="text-center py-8 hidden">
-      <p class="font-display text-sm text-cyan ai-loading tracking-widest">SCANNING MARKET EVENTS...</p>
-      <p class="font-mono text-xs text-dimText mt-2">Detecting events → Qwen analysis → Action classification</p>
-    </div>
-    <div id="agent-result" class="hidden">
-      <div class="flex items-center gap-4 mb-6 flex-wrap">
-        <div id="agent-state-tag" class="ai-tag ai-tag-neutral"></div>
-        <div id="agent-next-scan" class="font-mono text-xs text-dimText"></div>
-      </div>
-      <div class="space-y-3" id="agent-events-list"></div>
-    </div>
-    <div id="agent-error" class="hidden text-center py-8">
-      <p class="font-mono text-sm text-danger" id="agent-error-msg"></p>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================ -->
-<!-- SECTION 3: FEAR & GREED GAUGE -->
-<!-- ============================================ -->
-<section id="fear-greed" class="max-w-4xl mx-auto px-4 py-16 reveal">
-  <h2 class="font-display text-lg tracking-[.15em] text-cyan mb-8 uppercase">Fear &amp; Greed Index</h2>
-  <div class="glass p-8 flex flex-col lg:flex-row items-center gap-8">
-    <div class="flex-1 flex flex-col items-center">
-      <div id="gauge-chart" style="width:320px;height:220px"></div>
-      <p id="fg-label" class="font-mono text-sm text-amber mt-2 glow-amber text-center">Loading live Fear &amp; Greed data...</p>
-    </div>
-    <div class="flex-1">
-      <p class="font-mono text-xs text-dimText mb-3 tracking-widest uppercase">7-Day Trend</p>
-      <div id="fear-trend" style="width:100%;height:120px"></div>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================ -->
-<!-- SECTION 4: TOKENIZED STOCK DIVERGENCE SCANNER -->
-<!-- ============================================ -->
-<section id="rtoken-scanner" class="max-w-7xl mx-auto px-4 py-16 reveal">
-  <div class="flex flex-wrap items-baseline justify-between gap-3 mb-3">
-    <h2 class="font-display text-lg tracking-[.15em] text-cyan uppercase">Tokenized Stock Divergence Scanner</h2>
-    <span id="rtoken-regime-badge" class="font-mono text-[.7rem] px-3 py-1 rounded border border-cyan/30 text-cyan tracking-[.2em] uppercase">Market Regime: loading…</span>
-  </div>
-  <p class="font-mono text-xs text-dimText mb-6">rToken (Bitget spot) vs underlying US equity (Yahoo Finance) — live basis, direction, and 7×24 market-hours regime</p>
-  <div class="glass overflow-x-auto">
-    <table class="data-table">
-      <thead><tr>
-        <th>Token</th><th>rToken Price</th><th>US Equity</th><th>Basis / Divergence</th><th>Direction</th><th>Regime</th><th>Signal</th>
-      </tr></thead>
-      <tbody id="rtoken-tbody"></tbody>
-    </table>
-  </div>
-  <p id="rtoken-interp" class="font-mono text-[.7rem] text-dimText/70 mt-3"></p>
-</section>
-
-<!-- ============================================ -->
-<!-- SECTION 5: STOCK / rTOKEN FLOW & DERIVATIVES -->
-<!-- ============================================ -->
-<section id="whale-flow" class="max-w-7xl mx-auto px-4 py-16 reveal">
-  <h2 class="font-display text-lg tracking-[.15em] text-cyan mb-2 uppercase">Stock &amp; rToken Flow &amp; Derivatives Intelligence</h2>
-  <p class="font-mono text-xs text-dimText mb-8">Basis (rToken vs underlying) as synthetic funding, 24h Bitget rToken spot volume shifts, dislocation open interest</p>
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <!-- Left: rToken Derivatives -->
-    <div class="glass p-6">
-      <h3 class="font-display text-sm tracking-[.15em] text-neon mb-5 uppercase">rToken / Stock Derivatives Signals</h3>
-      <div id="deriv-metrics" class="space-y-4 font-mono text-sm"></div>
-    </div>
-    <!-- Right: Whale Alerts -->
-    <div class="glass p-6">
-      <h3 class="font-display text-sm tracking-[.15em] text-amber mb-5 uppercase">Whale Alert Intelligence</h3>
-      <div id="whale-alerts"></div>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================ -->
-<!-- SECTION 6: TRADFI-CRYPTO BRIDGE -->
-<!-- ============================================ -->
-<section id="tradfi-bridge" class="max-w-7xl mx-auto px-4 py-16 reveal">
-  <h2 class="font-display text-lg tracking-[.15em] text-cyan mb-2 uppercase">Cross-Chain Intelligence</h2>
-  <p class="font-mono text-xs text-dimText mb-8">ETH &amp; BTC Correlation — On-Chain Flow Analysis</p>
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <div class="glass p-6 space-y-4" id="tradfi-findings"></div>
-    <div class="glass p-6 flex flex-col justify-between">
-      <h3 class="font-display text-xs tracking-[.15em] text-neon mb-4 uppercase">Correlation Monitor</h3>
-      <div class="space-y-5" id="corr-section"></div>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================ -->
-<!-- SECTION 7: TRENDING SIGNALS -->
-<!-- ============================================ -->
-<section id="trending" class="max-w-7xl mx-auto px-4 py-16 reveal">
-  <h2 class="font-display text-lg tracking-[.15em] text-cyan mb-8 uppercase">Trending Search Signals</h2>
-  <div class="mb-6">
-    <p class="font-mono text-xs text-dimText mb-3 tracking-widest uppercase">CoinGecko Trending</p>
-    <div class="trending-scroll" id="cg-trending"></div>
-  </div>
-  <div>
-    <p class="font-mono text-xs text-dimText mb-3 tracking-widest uppercase">Solana DEX Trending</p>
-    <div class="trending-scroll" id="sol-trending"></div>
-  </div>
-</section>
-
-<!-- ============================================ -->
-<!-- SECTION 8: SOCIAL SENTIMENT -->
-<!-- ============================================ -->
-<section id="sentiment" class="max-w-7xl mx-auto px-4 py-16 reveal">
-  <h2 class="font-display text-lg tracking-[.15em] text-cyan mb-8 uppercase">Social Sentiment Aggregation</h2>
-  <!-- Pipeline -->
-  <div class="glass p-6 mb-6">
-    <div class="flex flex-wrap items-center justify-center gap-2 md:gap-0">
-      <div class="arch-box !min-w-[120px]"><p class="font-display text-[.65rem] text-cyan tracking-widest">SOURCES</p><p class="font-mono text-[.7rem] mt-1 text-dimText">X / News / Polymarket</p></div>
-      <div class="arch-arrow px-2">→</div>
-      <div class="arch-box !min-w-[120px]"><p class="font-display text-[.65rem] text-neon tracking-widest">NLP ENGINE</p><p class="font-mono text-[.7rem] mt-1 text-dimText">Sentiment Parser</p></div>
-      <div class="arch-arrow px-2">→</div>
-      <div class="arch-box !min-w-[120px]"><p class="font-display text-[.65rem] text-amber tracking-widest">SCORE</p><p class="font-mono text-[.7rem] mt-1 text-dimText">38 / 100</p></div>
-      <div class="arch-arrow px-2">→</div>
-      <div class="arch-box !min-w-[120px]"><p class="font-display text-[.65rem] text-danger tracking-widest">SIGNAL</p><p class="font-mono text-[.7rem] mt-1 text-dimText">Bearish-Neutral</p></div>
-    </div>
-  </div>
-  <!-- Source cards -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="sentiment-cards"></div>
-</section>
-
-<!-- ============================================ -->
-<!-- SECTION 8A: QWEN AI SENTIMENT ANALYSIS -->
-<!-- ============================================ -->
-<section id="qwen-status-banner" class="max-w-7xl mx-auto px-4 pt-16 reveal">
-  <div id="qwen-banner" class="glass p-4 flex items-center justify-between flex-wrap gap-3" style="border-color:rgba(255,170,0,.2)">
-    <div class="flex items-center gap-3">
-      <span id="qwen-dot" class="inline-block w-3 h-3 rounded-full bg-amber"></span>
-      <span class="font-display text-xs tracking-[.15em] text-amber uppercase">Qwen AI Status</span>
-      <span id="qwen-status-text" class="font-mono text-xs text-dimText">Checking connectivity...</span>
-    </div>
-    <button class="ai-btn" onclick="checkQwenHealth()" style="padding:.3rem .8rem;font-size:.55rem">Recheck</button>
-  </div>
-</section>
-
-<section id="qwen-sentiment" class="max-w-7xl mx-auto px-4 py-16 reveal">
-  <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
-    <div>
-      <h2 class="font-display text-lg tracking-[.15em] text-cyan uppercase">Qwen AI Sentiment Engine</h2>
-      <p class="font-mono text-xs text-dimText mt-1">Powered by Qwen 3.8 Max via OpenRouter</p>
-    </div>
-    <button id="btn-sentiment" class="ai-btn" onclick="runSentiment()">
-      <span class="live-dot" style="width:6px;height:6px"></span> Run Analysis
-    </button>
-  </div>
-  <div id="qwen-sentiment-panel" class="ai-panel glass p-6">
-    <div id="qwen-sentiment-idle" class="text-center py-8">
-      <p class="font-mono text-sm text-dimText">Click <span class="text-cyan">"Run Analysis"</span> to feed live market data through Qwen AI</p>
-      <p class="font-mono text-xs text-dimText/60 mt-2">Aggregates prices, derivatives, Fear &amp; Greed, trending tokens, and news headlines</p>
-    </div>
-    <div id="qwen-sentiment-loading" class="text-center py-8 hidden">
-      <p class="font-display text-sm text-cyan ai-loading tracking-widest">PROCESSING MARKET INTELLIGENCE...</p>
-      <p class="font-mono text-xs text-dimText mt-2">Qwen is analyzing cross-market signals</p>
-    </div>
-    <div id="qwen-sentiment-result" class="hidden">
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Score + Classification -->
-        <div class="flex flex-col items-center justify-center">
-          <p class="font-mono text-xs text-dimText uppercase tracking-widest mb-2">Overall Score</p>
-          <div id="qs-score" class="font-display text-5xl text-amber glow-amber">—</div>
-          <div id="qs-class" class="ai-tag ai-tag-neutral mt-2">—</div>
-          <div id="qs-contrarian" class="mt-3 font-mono text-xs text-dimText"></div>
-        </div>
-        <!-- Key Drivers -->
-        <div>
-          <p class="font-mono text-xs text-dimText uppercase tracking-widest mb-3">Key Drivers</p>
-          <div id="qs-drivers"></div>
-        </div>
-        <!-- Narrative + Summary -->
-        <div>
-          <p class="font-mono text-xs text-dimText uppercase tracking-widest mb-3">Market Narrative</p>
-          <div id="qs-narrative" class="font-mono text-sm text-cyan mb-4"></div>
-          <p class="font-mono text-xs text-dimText uppercase tracking-widest mb-2">AI Summary</p>
-          <p id="qs-summary" class="font-mono text-sm text-white/80 leading-relaxed"></p>
-          <div id="qs-confidence" class="mt-3 font-mono text-xs text-dimText"></div>
-        </div>
-      </div>
-    </div>
-    <div id="qwen-sentiment-error" class="hidden text-center py-8">
-      <p class="font-mono text-sm text-danger" id="qs-error-msg"></p>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================ -->
-<!-- SECTION 8B: QWEN WHALE CLASSIFICATION -->
-<!-- ============================================ -->
-<section id="qwen-whale" class="max-w-7xl mx-auto px-4 py-16 reveal">
-  <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
-    <div>
-      <h2 class="font-display text-lg tracking-[.15em] text-cyan uppercase">Qwen Whale Classifier</h2>
-      <p class="font-mono text-xs text-dimText mt-1">AI-powered whale alert impact classification</p>
-    </div>
-    <button id="btn-whale" class="ai-btn" onclick="runWhaleClassify()">
-      <span class="live-dot" style="width:6px;height:6px"></span> Classify Alerts
-    </button>
-  </div>
-  <div id="qwen-whale-panel" class="ai-panel glass p-6">
-    <div id="qw-idle" class="text-center py-8">
-      <p class="font-mono text-sm text-dimText">Click <span class="text-cyan">"Classify Alerts"</span> to analyze whale transactions via Qwen</p>
-    </div>
-    <div id="qw-loading" class="text-center py-8 hidden">
-      <p class="font-display text-sm text-cyan ai-loading tracking-widest">CLASSIFYING WHALE ACTIVITY...</p>
-    </div>
-    <div id="qw-result" class="hidden">
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2" id="qw-alerts-list"></div>
-        <div>
-          <p class="font-mono text-xs text-dimText uppercase tracking-widest mb-3">Smart Money Summary</p>
-          <div id="qw-net-flow" class="mb-3"></div>
-          <div id="qw-smart-money"></div>
-        </div>
-      </div>
-    </div>
-    <div id="qw-error" class="hidden text-center py-8">
-      <p class="font-mono text-sm text-danger" id="qw-error-msg"></p>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================ -->
-<!-- SECTION 8C: QWEN TRADE DECISIONS -->
-<!-- ============================================ -->
-<section id="qwen-trades" class="max-w-7xl mx-auto px-4 py-16 reveal">
-  <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
-    <div>
-      <h2 class="font-display text-lg tracking-[.15em] text-cyan uppercase">Qwen Autonomous Decisions</h2>
-      <p class="font-mono text-xs text-dimText mt-1">AI-generated paper trading signals with risk management</p>
-    </div>
-    <button id="btn-trades" class="ai-btn" onclick="runTradeDecisions()">
-      <span class="live-dot" style="width:6px;height:6px"></span> Generate Trades
-    </button>
-  </div>
-  <div id="qwen-trades-panel" class="ai-panel glass p-6">
-    <div id="qt-idle" class="text-center py-8">
-      <p class="font-mono text-sm text-dimText">Click <span class="text-cyan">"Generate Trades"</span> for autonomous paper trading decisions</p>
-    </div>
-    <div id="qt-loading" class="text-center py-8 hidden">
-      <p class="font-display text-sm text-cyan ai-loading tracking-widest">GENERATING TRADE DECISIONS...</p>
-    </div>
-    <div id="qt-result" class="hidden">
-      <div class="flex items-center gap-4 mb-6 flex-wrap">
-        <div id="qt-regime" class="ai-tag ai-tag-neutral"></div>
-        <div id="qt-risk" class="ai-tag ai-tag-neutral"></div>
-        <div id="qt-max-pos" class="font-mono text-xs text-dimText"></div>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="qt-cards"></div>
-    </div>
-    <div id="qt-error" class="hidden text-center py-8">
-      <p class="font-mono text-sm text-danger" id="qt-error-msg"></p>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================ -->
-<!-- SECTION 9: ARCHITECTURE -->
-<!-- ============================================ -->
-<section id="architecture" class="max-w-7xl mx-auto px-4 py-16 reveal">
-  <h2 class="font-display text-lg tracking-[.15em] text-cyan mb-8 uppercase">System Architecture</h2>
-  <div class="glass p-8 overflow-x-auto">
-    <!-- Main flow -->
-    <div class="flex flex-wrap items-start justify-center gap-3 mb-6" id="arch-flow"></div>
-    <!-- Feedback loop -->
-    <div class="relative mx-auto max-w-3xl mt-2">
-      <div class="border-b border-l border-r border-cyan/20 rounded-b-xl h-10 mx-8"></div>
-      <div class="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 font-mono text-[.65rem] text-cyan bg-void px-3 tracking-widest uppercase">Feedback Loop</div>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================ -->
-<!-- SECTION 10: TRADE LOG -->
-<!-- ============================================ -->
-<section id="trade-log" class="max-w-7xl mx-auto px-4 py-16 reveal">
-  <h2 class="font-display text-lg tracking-[.15em] text-cyan mb-8 uppercase">Autonomous Trade Log</h2>
-  <div class="glass overflow-x-auto">
-    <table class="data-table">
-      <thead><tr>
-        <th>Time</th><th>Asset</th><th>Side</th><th>Size</th><th>Entry</th><th>Rationale</th><th>Status</th>
-      </tr></thead>
-      <tbody id="trade-tbody"></tbody>
-    </table>
-  </div>
-</section>
-
-<!-- ============================================ -->
-<!-- SECTION 11: FOOTER -->
-<!-- ============================================ -->
-<footer class="text-center py-12 border-t border-cyan/5">
-  <p class="font-display text-xs tracking-[.2em] text-dimText">WhalePulse AI v2.0 &nbsp;|&nbsp; Bitget AI Hackathon S2 &nbsp;|&nbsp; Powered by Qwen 3.8 Max &nbsp;|&nbsp; Event-Driven Agent &nbsp;|&nbsp; Paper Trading Only — Not Financial Advice</p>
-  <p class="font-mono text-[.65rem] text-dimText/50 mt-2">Track 2: Agentic Trading | rToken Monitoring | Bitget Agent Hub API &nbsp;|&nbsp; hackathon.bitgetops.com</p>
-</footer>
-
-<!-- ============================================ -->
-<!-- JAVASCRIPT -->
-<!-- ============================================ -->
-<script>
-// =============================================
-// DATA
-// =============================================
-// --- Static snapshot used as fallback while live data loads ---
-let snapshotData = [
-  { label:'BTC', value:'...', change:null, icon:'\u20bf' },
-  { label:'ETH', value:'...', change:null, icon:'\u039e' },
-  { label:'SOL', value:'...', change:null, icon:'\u25c8' },
-  { label:'BNB', value:'...', change:null, icon:'\u25c7' },
-  { label:'XRP', value:'...', change:null, icon:'\u25cb' },
-  { label:'DOGE', value:'...', change:null, icon:'\ud83d\udc36' },
-  { label:'Crypto MCap', value:'...', change:null, icon:'\u03a3' },
-  { label:'BTC Dom', value:'...', change:null, icon:'\u25c9' },
-];
-
-// rToken tracker (replaces meme scanner). Populated by /api/stock-divergence.
-let rtokenData = [
-  { label:'rTSLA', stock:'TSLA', rtoken_price:null, us_price:null, spread_pct:null, spread_direction:null, us_market_state:null, signal:null },
-  { label:'rNVDA', stock:'NVDA', rtoken_price:null, us_price:null, spread_pct:null, spread_direction:null, us_market_state:null, signal:null },
-  { label:'rAAPL', stock:'AAPL', rtoken_price:null, us_price:null, spread_pct:null, spread_direction:null, us_market_state:null, signal:null },
-  { label:'rMSFT', stock:'MSFT', rtoken_price:null, us_price:null, spread_pct:null, spread_direction:null, us_market_state:null, signal:null },
-  { label:'rGOOGL', stock:'GOOGL', rtoken_price:null, us_price:null, spread_pct:null, spread_direction:null, us_market_state:null, signal:null },
-  { label:'rMETA', stock:'META', rtoken_price:null, us_price:null, spread_pct:null, spread_direction:null, us_market_state:null, signal:null },
-  { label:'rAMZN', stock:'AMZN', rtoken_price:null, us_price:null, spread_pct:null, spread_direction:null, us_market_state:null, signal:null },
-  { label:'rCOIN', stock:'COIN', rtoken_price:null, us_price:null, spread_pct:null, spread_direction:null, us_market_state:null, signal:null },
-];
-let rtokenStats = null;
-let rtokenRegime = null;
-
-const whaleAlerts = [
-  { time:'14:32', text:'Worldcoin whale txns hit 64 in 24h \u2014 2026 high', severity:'high' },
-  { time:'13:18', text:'ETH whale accumulation accelerating \u2014 top holders increasing positions', severity:'high' },
-  { time:'12:05', text:'WLD active addresses + new wallets at 2026 highs alongside price to $0.408', severity:'medium' },
-  { time:'11:41', text:'Large BTC transfers detected across exchanges \u2014 2,400 BTC moved', severity:'high' },
-  { time:'10:22', text:'SOL whale deposits 120K SOL to Binance \u2014 potential distribution', severity:'medium' },
-];
-
-const tradfiFindings = [
-  'BTC dominance rising above 57% — capital rotating to blue chips',
-  'DeFi TVL on Ethereum surpasses $60B in 2026',
-  'Meme coin rotation slowing — volume declining across DOGE, PEPE, SHIB',
-  'Stablecoin market cap hits record $190B — dry powder accumulating',
-];
-
-const cgTrending = [
-  { rank:1, sym:'LAB', name:'LAB' }, { rank:2, sym:'HYPE', name:'Hyperliquid' },
-  { rank:3, sym:'H', name:'Humanity' }, { rank:4, sym:'PORTAL', name:'Portal' },
-  { rank:5, sym:'NEAR', name:'NEAR Protocol' }, { rank:6, sym:'SLX', name:'Solstice' },
-  { rank:7, sym:'SUI', name:'Sui' }, { rank:8, sym:'XLM', name:'Stellar' },
-];
-const solTrending = [
-  { name:'Frog Knight', tag:'MEME' }, { name:'Fingers', tag:'MEME' },
-  { name:'IcePin', tag:'MEME' }, { name:'GTA VI', tag:'CULTURE' },
-  { name:'Dogeus Maximus', tag:'MEME' }, { name:'DEXSwapper', tag:'DEFI' },
-];
-
-const sentimentSources = [
-  { src:'Twitter / X', text:'Meme coin sentiment cautious entering June 2026', score:32, color:'#ff4444' },
-  { src:'News Feeds', text:'BTC dominance rising — altcoin rotation slowing', score:42, color:'#ffaa00' },
-  { src:'Polymarket', text:'149 live memecoin prediction markets active', score:30, color:'#ff4444' },
-];
-
-const archNodes = [
-  { title:'Data Sources', items:['CoinGecko','Bitget Spot API','Bitget rToken','Fear&Greed','Whale Alert','Social Feeds'], color:'#00d4ff' },
-  { title:'Event Detector', items:['Price Move Scanner','rToken Divergence','Funding Anomaly','Whale Flow Parser'], color:'#00d4ff' },
-  { title:'Qwen 3.8 Max', items:['Sentiment NLP','Event Classifier','Trade Generator'], color:'#00ff88' },
-  { title:'Risk Mgr', items:['Position Sizer','Drawdown Monitor','Correlation Filter'], color:'#ffaa00' },
-  { title:'Execution', items:['Bitget Agent Hub','Paper Logger','Alert System'], color:'#ff4444' },
-];
-
-const trades = [];
-
-// Global raw price store — updated by fetchLivePrices
-const livePrices = { BTC: null, ETH: null, SOL: null, BNB: null, XRP: null, DOGE: null, PEPE: null, SHIB: null, FLOKI: null, WIF: null, BONK: null, btcChange: null, ethChange: null };
-
-function buildTrades() {
-  const btc = livePrices.BTC || 60000;
-  const eth = livePrices.ETH || 1550;
-  const sol = livePrices.SOL || 62;
-  const fg = livePrices.fearGreed || 12;
-  const btcChg = livePrices.btcChange;
-  const btcBias = btcChg !== null && btcChg < 0 ? 'SHORT' : 'LONG';
-  const btcRationale = btcChg !== null
-    ? (btcChg < 0 ? `Crowded long (LSR 1.69), Fear ${fg}, price declining ${btcChg.toFixed(1)}%` : `Momentum long, Fear ${fg}, price rising ${btcChg.toFixed(1)}%`)
-    : 'Crowded long (LSR 1.69), Fear ' + fg;
-
-  const btcEntry = +(btc * (1 + (Math.random()*0.004 - 0.002))).toFixed(2);
-  const btcSL = btcBias === 'SHORT' ? +(btcEntry * 1.02).toFixed(2) : +(btcEntry * 0.98).toFixed(2);
-  const btcTP = btcBias === 'SHORT' ? +(btcEntry * 0.97).toFixed(2) : +(btcEntry * 1.03).toFixed(2);
-  const btcPnl = btcBias === 'SHORT' ? +((btcEntry - btc) * 0.5).toFixed(0) : +((btc - btcEntry) * 0.5).toFixed(0);
-
-  const ethEntry = +(eth * (1 + (Math.random()*0.004 - 0.002))).toFixed(2);
-  const ethSL = +(ethEntry * 0.975).toFixed(2);
-  const ethTP = +(ethEntry * 1.03).toFixed(2);
-  const ethPnl = +((eth - ethEntry) * 2).toFixed(0);
-
-  const solEntry = +(sol * (1 + (Math.random()*0.004 - 0.002))).toFixed(2);
-  const solSL = +(solEntry * 1.025).toFixed(2);
-  const solTP = +(solEntry * 0.97).toFixed(2);
-  const solPnl = +((solEntry - sol) * 50).toFixed(0);
-
-  return [
-    { time:'00:15', asset:'BTCUSDT', side:btcBias, size:'0.5 BTC', entry:'$'+btcEntry.toLocaleString(), sl:'$'+btcSL.toLocaleString(), tp:'$'+btcTP.toLocaleString(), rationale:btcRationale, status:'OPEN', pnl:(btcPnl>=0?'+':'')+('$'+btcPnl), pnlDir:btcPnl>=0?'up':'down' },
-    { time:'00:22', asset:'ETHUSDT', side:'LONG', size:'2 ETH', entry:'$'+ethEntry.toLocaleString(), sl:'$'+ethSL, tp:'$'+ethTP, rationale:'ETH whale accumulation accelerating, contrarian long at Fear '+fg, status:'OPEN', pnl:(ethPnl>=0?'+':'')+('$'+ethPnl), pnlDir:ethPnl>=0?'up':'down' },
-    { time:'00:31', asset:'SOLUSDT', side:'SHORT', size:'50 SOL', entry:'$'+solEntry, sl:'$'+solSL, tp:'$'+solTP, rationale:'Meme rotation cooling, SOL beta to BTC decline', status:'OPEN', pnl:(solPnl>=0?'+':'')+('$'+solPnl), pnlDir:solPnl>=0?'up':'down' },
-    { time:'00:45', asset:'HYPE', side:'WATCH', size:'\u2014', entry:'\u2014', sl:'\u2014', tp:'\u2014', rationale:'Trending #2, near ATH, wait for pullback entry', status:'MONITORING', pnl:'\u2014', pnlDir:null },
-  ];
-}
-
-function renderTradeLog() {
-  const t = buildTrades();
-  document.getElementById('trade-tbody').innerHTML = t.map(t => `
-    <tr>
-      <td class="text-dimText">${t.time}</td>
-      <td class="text-white font-bold">${t.asset}</td>
-      <td class="${sideClr(t.side)} font-bold">${t.side}</td>
-      <td>${t.size}</td>
-      <td>${t.entry}</td>
-      <td class="text-dimText max-w-[280px]">${t.rationale}</td>
-      <td>
-        <span class="${t.status==='MONITORING'?'text-amber':'text-white'} text-xs">${t.status}</span>
-        ${t.pnl!=='\u2014' ? `<span class="ml-2 font-bold ${t.pnlDir==='up'?'text-neon':'text-danger'}">${t.pnl}</span>` : ''}
-      </td>
-    </tr>
-  `).join('');
-}
-
-function renderCorrelation() {
-  const btcChg = livePrices.btcChange;
-  const ethChg = livePrices.ethChange !== null ? livePrices.ethChange : -1.5;
-  const btcPct = btcChg !== null ? btcChg : -0.5;
-  const barW = (v) => Math.min(Math.abs(v) * 15, 80);
-  const corrR = (Math.abs(ethChg - btcPct) < 2) ? 0.92 : 0.65;
-  const corrLabel = corrR > 0.8 ? 'High positive correlation' : corrR > 0.5 ? 'Moderate correlation' : 'Low correlation';
-  const corrColor = corrR > 0.8 ? 'text-neon glow-green' : 'text-amber';
-
-  document.getElementById('corr-section').innerHTML = `
-    <div>
-      <div class="flex justify-between font-mono text-xs mb-2">
-        <span class="text-dimText">ETH</span><span class="${ethChg<0?'text-danger':'text-neon'}">${ethChg>0?'+':''}${ethChg.toFixed(2)}%</span>
-      </div>
-      <div class="w-full bg-white/5 rounded-full h-2"><div class="h-2 rounded-full ${ethChg<0?'bg-danger':'bg-neon'}" style="width:${barW(ethChg)}%"></div></div>
-    </div>
-    <div>
-      <div class="flex justify-between font-mono text-xs mb-2">
-        <span class="text-dimText">BTC</span><span class="${btcPct<0?'text-danger':'text-neon'}">${btcPct>0?'+':''}${btcPct.toFixed(2)}%</span>
-      </div>
-      <div class="w-full bg-white/5 rounded-full h-2"><div class="h-2 rounded-full ${btcPct<0?'bg-danger':'bg-neon'}" style="width:${barW(btcPct)}%"></div></div>
-    </div>
-    <div class="border-t border-white/5 pt-4 mt-2">
-      <p class="font-mono text-xs text-dimText mb-2">ETH \u2194 BTC Correlation (24h)</p>
-      <div class="corr-bar"><div class="corr-marker" style="left:${corrR*100}%"></div></div>
-      <p class="font-mono text-xs ${corrColor} mt-2">${corrLabel} detected (r \u2248 ${corrR.toFixed(2)})</p>
-    </div>
-  `;
-}
-
-// =============================================
-// RENDER HELPERS
-// =============================================
-const clr = v => v > 0 ? 'text-neon' : v < 0 ? 'text-danger' : 'text-dimText';
-const signalClr = s => s.includes('Sell') ? 'text-danger' : s === 'Watch' ? 'text-amber' : s.includes('Buy') ? 'text-neon' : 'text-amber';
-const sideClr = s => s === 'SHORT' ? 'text-danger' : s === 'LONG' ? 'text-neon' : s === 'WATCH' ? 'text-amber' : 'text-dimText';
-
-// SECTION 2: MARKET SNAPSHOT — render helper
-function renderSnapshot() {
-  document.getElementById('snapshot-grid').innerHTML = snapshotData.map(d => `
-    <div class="glass p-4 box-glow-cyan flex flex-col gap-1">
-      <div class="flex items-center gap-2">
-        <span class="font-display text-xs text-cyan">${d.icon}</span>
-        <span class="font-mono text-xs text-dimText">${d.label}</span>
-      </div>
-      <span class="font-display text-xl text-white">${d.value}</span>
-      ${d.change !== null ? `<span class="font-mono text-xs ${clr(d.change)}">${d.change > 0 ? '+' : ''}${d.change.toFixed(2)}%</span>` : '<span class="font-mono text-xs text-dimText ai-loading">loading\u2026</span>'}
-    </div>
-  `).join('');
-}
-renderSnapshot(); // show placeholders immediately
-
-// SECTION 4: rTOKEN DIVERGENCE TABLE — render helper
-function regimeLabel(r) {
-  if (!r) return 'LOADING';
-  const map = { weekend:'WEEKEND', pre_market:'PRE-MARKET', regular:'REGULAR HRS', after_hours:'AFTER HOURS', closed:'CLOSED' };
-  return (map[r.regime] || String(r.regime).toUpperCase()) + (r.ny_time ? ' · ' + r.ny_time : '');
-}
-function shortRegime(r) {
-  if (!r) return '\u2014';
-  const map = { weekend:'WKND', pre_market:'PRE', regular:'RTH', after_hours:'AH', closed:'CLSD' };
-  return map[r.regime] || r.regime || '\u2014';
-}
-function rtokenSignalClass(sig) {
-  if (!sig) return 'text-dimText';
-  if (sig === 'strong_premium') return 'text-neon glow-green';
-  if (sig === 'strong_discount') return 'text-danger';
-  if (sig === 'mild_premium') return 'text-neon';
-  if (sig === 'mild_discount') return 'text-amber';
-  return 'text-dimText';
-}
-function rtokenSignalLabel(sig) {
-  const map = {
-    strong_premium: 'STRONG PREMIUM',
-    strong_discount: 'STRONG DISCOUNT',
-    mild_premium: 'MILD PREMIUM',
-    mild_discount: 'MILD DISCOUNT',
-    neutral: 'NEUTRAL',
-  };
-  return map[sig] || (sig ? String(sig).toUpperCase() : '\u2026');
-}
-function fmtSpread(p) {
-  if (p === null || p === undefined || isNaN(p)) return '\u2026';
-  const s = (p > 0 ? '+' : '') + p.toFixed(2) + '%';
-  return s;
-}
-function fmtUsd(n) {
-  if (n === null || n === undefined || isNaN(n)) return '\u2014';
-  if (n >= 1000) return '$' + Number(n).toLocaleString('en-US', {maximumFractionDigits:2});
-  return '$' + Number(n).toFixed(2);
-}
-function renderRtokenTable() {
-  const tbody = document.getElementById('rtoken-tbody'); if (!tbody) return;
-  tbody.innerHTML = rtokenData.map(d => {
-    const dirLabel = d.spread_direction === 'rtoken_premium' ? 'PREMIUM \u25b2' : (d.spread_direction === 'rtoken_discount' ? 'DISCOUNT \u25bc' : '\u2014');
-    const dirClass = d.spread_direction === 'rtoken_premium' ? 'text-neon' : (d.spread_direction === 'rtoken_discount' ? 'text-danger' : 'text-dimText');
-    return `
-    <tr>
-      <td class="font-bold text-white">$${d.label} <span class="text-dimText text-[.65rem]">/ ${d.stock}</span></td>
-      <td>${fmtUsd(d.rtoken_price)}</td>
-      <td>${fmtUsd(d.us_price)}</td>
-      <td class="${d.spread_pct !== null ? (d.spread_pct >= 0 ? 'text-neon' : 'text-danger') : 'text-dimText'} font-bold">${fmtSpread(d.spread_pct)}</td>
-      <td class="${dirClass} font-mono text-xs">${dirLabel}</td>
-      <td class="text-cyan font-mono text-[.7rem] tracking-wider">${shortRegime(rtokenRegime)}</td>
-      <td><span class="${rtokenSignalClass(d.signal)} font-bold text-xs">${rtokenSignalLabel(d.signal)}</span></td>
-    </tr>`;
-  }).join('');
-  const regimeBadge = document.getElementById('rtoken-regime-badge');
-  if (regimeBadge) regimeBadge.textContent = 'Market Regime: ' + regimeLabel(rtokenRegime);
-}
-renderRtokenTable();
-
-// =============================================
-// LIVE PRICE ENGINE — Binance + CoinGecko
-// =============================================
-function fmtPrice(n) {
-  if (n >= 1000) return '$' + n.toLocaleString('en-US', {maximumFractionDigits:2});
-  if (n >= 1) return '$' + n.toFixed(2);
-  if (n >= 0.0001) return '$' + n.toPrecision(4);
-  return '$' + n.toPrecision(3);
-}
-function fmtVol(n) {
-  if (n >= 1e9) return '$' + (n/1e9).toFixed(2) + 'B';
-  if (n >= 1e6) return '$' + (n/1e6).toFixed(1) + 'M';
-  if (n >= 1e3) return '$' + (n/1e3).toFixed(1) + 'K';
-  return '$' + n.toFixed(0);
-}
-function fmtTrades(n) {
-  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
-  if (n >= 1e3) return (n/1e3).toFixed(0) + 'K';
-  return String(n);
-}
-// Fetch rToken vs underlying spreads and update Sections 4 + 5
-async function fetchDivergence() {
-  try {
-    const r = await fetch('/api/stock-divergence');
-    const j = await r.json();
-    if (!j.ok || !j.data) return;
-    const d = j.data;
-    rtokenRegime = d.market_regime || null;
-    rtokenStats = d.stats || null;
-    // Index spreads by label
-    const bySym = {};
-    (d.spreads || []).forEach(s => { bySym[s.label] = s; });
-    rtokenData.forEach(row => {
-      const s = bySym[row.label];
-      if (!s) return;
-      row.rtoken_price = s.rtoken_price;
-      row.us_price = s.us_price;
-      row.spread_pct = s.spread_pct;
-      row.spread_direction = s.spread_direction || null;
-      row.us_market_state = s.us_market_state || null;
-      row.signal = s.signal || null;
-      row.volume_24h = s.volume_24h ?? null;
-      row.change_24h_pct = s.change_24h_pct ?? null;
-    });
-    renderRtokenTable();
-    renderRtokenDerivPanel();
-    const interp = document.getElementById('rtoken-interp');
-    if (interp) interp.textContent = d.interpretation || '';
-    console.log('[WhalePulse] rToken divergence refreshed at', new Date().toISOString());
-  } catch (e) { console.warn('[WhalePulse] divergence fetch failed:', e.message); }
-}
-function fmtVolShort(n) {
-  if (!n || isNaN(n)) return '\u2014';
-  if (n >= 1e9) return '$' + (n/1e9).toFixed(2) + 'B';
-  if (n >= 1e6) return '$' + (n/1e6).toFixed(1) + 'M';
-  if (n >= 1e3) return '$' + (n/1e3).toFixed(1) + 'K';
-  return '$' + Number(n).toFixed(0);
-}
-function renderRtokenDerivPanel() {
-  const el = document.getElementById('deriv-metrics'); if (!el) return;
-  const s = rtokenStats;
-  if (!s) { el.innerHTML = '<p class="text-dimText ai-loading">Loading rToken derivatives\u2026</p>'; return; }
-  const meanClr = s.mean_spread_pct === null ? 'text-dimText' : (s.mean_spread_pct >= 0 ? 'text-neon' : 'text-danger');
-  const biasClr = s.basis_bias === 'premium_skew' ? 'text-neon' : (s.basis_bias === 'discount_skew' ? 'text-danger' : 'text-cyan');
-  const biasLabel = { premium_skew:'Premium skew (rToken > stock)', discount_skew:'Discount skew (rToken < stock)', balanced:'Balanced basis', unknown:'\u2014' }[s.basis_bias] || s.basis_bias;
-  const tp = s.top_premium, td = s.top_discount;
-  el.innerHTML = `
-    <div class="flex justify-between items-start border-b border-white/5 pb-3">
+  <div class="fixed left-0 top-0 z-50 h-[2px] bg-mint" id="progress"></div>
+  <header class="relative z-10 mx-auto max-w-7xl px-5 pb-12 pt-8 md:pt-14">
+    <nav class="flex items-center justify-between border-b border-line pb-5">
+      <div class="display text-lg font-bold tracking-[.12em] text-white">WHALEPULSE <span class="text-mint">AI</span></div>
+      <div class="flex items-center gap-3"><span class="live"></span><span class="text-[.65rem] tracking-[.16em] text-mint">LIVE MARKET DATA</span></div>
+    </nav>
+    <div class="grid gap-10 pb-8 pt-16 md:grid-cols-[1fr_auto] md:items-end">
       <div>
-        <p class="text-dimText text-xs uppercase tracking-wider">Mean Basis (rToken \u2212 stock)</p>
-        <p class="${meanClr} text-lg font-bold mt-1">${fmtSpread(s.mean_spread_pct)}</p>
-        <p class="text-xs text-dimText mt-1">|abs mean| ${fmtSpread(s.abs_mean_spread_pct)} \u00b7 acts as synthetic funding rate</p>
+        <p class="eyebrow mb-4 text-xs text-lime">Bitget AI Hackathon Season 2 · Track 3</p>
+        <h1 class="display max-w-4xl text-4xl font-bold leading-[.98] text-white md:text-7xl">TOKENIZED US<br><span class="text-mint">STOCK INTELLIGENCE</span></h1>
+        <p class="mt-6 max-w-2xl text-sm leading-7 text-muted">An autonomous rToken research and paper-execution terminal for live basis discovery, institutional flow shifts, benchmark correlation, and US market regime analysis.</p>
       </div>
-      <span class="text-xs ${biasClr} bg-white/5 px-2 py-1 rounded">${biasLabel}</span>
-    </div>
-    <div class="border-b border-white/5 pb-3">
-      <p class="text-dimText text-xs uppercase tracking-wider mb-2">Basis Open Interest (rToken names)</p>
-      <div class="grid grid-cols-3 gap-2 text-center">
-        <div><p class="text-xs text-dimText">Tracked</p><p class="text-white font-bold">${s.n_tracked}</p></div>
-        <div><p class="text-xs text-dimText">Premium</p><p class="text-neon font-bold">${s.n_premium}</p></div>
-        <div><p class="text-xs text-dimText">Discount</p><p class="text-danger font-bold">${s.n_discount}</p></div>
+      <div class="panel min-w-[220px] rounded-sm p-5">
+        <p class="eyebrow text-[.6rem] text-muted">New York Market</p>
+        <p class="display mt-2 text-2xl font-semibold text-mint" id="hero-regime">CONNECTING</p>
+        <p class="mt-1 text-xs text-muted" id="hero-time">—</p>
       </div>
     </div>
-    <div class="flex justify-between items-start border-b border-white/5 pb-3">
-      <div>
-        <p class="text-dimText text-xs uppercase tracking-wider">24h rToken Spot Volume (Bitget)</p>
-        <p class="text-white text-lg font-bold mt-1">${fmtVolShort(s.total_volume_24h)}</p>
-        <p class="text-xs text-dimText mt-1">Aggregate quote volume across ${s.n_tracked} rToken pairs</p>
+  </header>
+  <main class="relative z-10">
+    <section class="mx-auto max-w-7xl px-5 py-14" id="snapshot">
+      <div class="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div><p class="eyebrow text-[.65rem] text-lime">Market Snapshot</p><h2 class="display mt-2 text-2xl font-semibold text-white md:text-3xl">TOKENIZED US STOCKS <span class="text-mint">(rTokens)</span></h2></div>
+        <p class="text-xs text-muted">Bitget rToken Spot API · refreshes every 30 seconds</p>
       </div>
-      <span class="text-xs text-cyan bg-cyan/10 px-2 py-1 rounded">${shortRegime(rtokenRegime)}</span>
-    </div>
-    <div class="flex justify-between items-start border-b border-white/5 pb-3">
-      <div>
-        <p class="text-dimText text-xs uppercase tracking-wider">Top Premium</p>
-        <p class="text-neon text-lg font-bold mt-1">${tp ? '$' + tp.label + ' ' + fmtSpread(tp.spread_pct) : '\u2014'}</p>
-        <p class="text-xs text-dimText mt-1">${tp ? tp.stock + ' underlying ' + fmtUsd(tp.us_price) : ''}</p>
+      <div class="grid grid-cols-2 gap-3 md:grid-cols-4" id="ticker-grid"></div>
+      <p class="mt-3 text-[.65rem] text-muted" id="source-state">Connecting to live sources…</p>
+    </section>
+
+    <section class="mx-auto max-w-7xl px-5 py-14" id="agent">
+      <div class="panel rounded-sm p-6 md:p-8">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div><p class="eyebrow text-[.65rem] text-lime">Autonomous Agent</p><h2 class="display mt-2 text-2xl font-semibold text-white">rToken Event Scanner</h2><p class="mt-2 text-xs text-muted">Price moves · basis dislocations · NY session controls</p></div>
+          <button class="border border-mint/40 bg-mint/5 px-5 py-3 text-xs font-semibold tracking-[.12em] text-mint" id="scan-btn">RUN AGENT SCAN</button>
+        </div>
+        <div class="mt-6 grid gap-3 md:grid-cols-2" id="agent-results"><p class="text-sm text-muted">Agent ready. Run a scan to inspect the current rToken tape.</p></div>
       </div>
-      <span class="text-xs text-neon bg-neon/10 px-2 py-1 rounded">rToken bid</span>
-    </div>
-    <div class="flex justify-between items-start">
-      <div>
-        <p class="text-dimText text-xs uppercase tracking-wider">Top Discount</p>
-        <p class="text-danger text-lg font-bold mt-1">${td ? '$' + td.label + ' ' + fmtSpread(td.spread_pct) : '\u2014'}</p>
-        <p class="text-xs text-dimText mt-1">${td ? td.stock + ' underlying ' + fmtUsd(td.us_price) : ''}</p>
+    </section>
+
+    <section class="mx-auto max-w-7xl px-5 py-14" id="basis">
+      <div class="mb-7 flex flex-wrap items-end justify-between gap-3">
+        <div><p class="eyebrow text-[.65rem] text-lime">Price Discovery</p><h2 class="display mt-2 text-2xl font-semibold text-white">rToken Basis Monitor</h2></div>
+        <span class="badge" id="basis-regime">NY REGIME: —</span>
       </div>
-      <span class="text-xs text-danger bg-danger/10 px-2 py-1 rounded">rToken offered</span>
-    </div>
-  `;
-}
+      <div class="panel overflow-x-auto rounded-sm">
+        <table><thead><tr><th>rToken</th><th>Bitget Price</th><th>US Equity</th><th>Equity Price</th><th>24h Move</th><th>Basis</th><th>State</th></tr></thead><tbody id="basis-body"></tbody></table>
+      </div>
+    </section>
+    <section class="mx-auto max-w-7xl px-5 py-14" id="flow">
+      <div class="mb-7"><p class="eyebrow text-[.65rem] text-lime">Institutional Tape</p><h2 class="display mt-2 text-2xl font-semibold text-white">STOCK &amp; rTOKEN FLOW INTELLIGENCE</h2><p class="mt-2 text-xs text-muted">Equity volume concentration, rToken liquidity, and live basis movements</p></div>
+      <div class="grid gap-4 md:grid-cols-2" id="flow-grid"></div>
+    </section>
 
-function applySnapshot(items) {
-  const labelMap = { 'BTC':0, 'ETH':1, 'SOL':2, 'BNB':3, 'XRP':4, 'DOGE':5, 'Crypto MCap':6, 'BTC Dom':7 };
-  items.forEach(d => {
-    const idx = labelMap[d.label];
-    if (idx === undefined) return;
-    if (d.value !== null && d.value !== undefined) {
-      if (d.label === 'Crypto MCap') {
-        const v = d.value;
-        snapshotData[idx].value = v >= 1e12 ? '$' + (v/1e12).toFixed(3) + 'T' : '$' + (v/1e9).toFixed(1) + 'B';
-      } else if (d.label === 'BTC Dom') {
-        snapshotData[idx].value = d.value.toFixed(2) + '%';
-      } else {
-        snapshotData[idx].value = fmtPrice(d.value);
-      }
-      snapshotData[idx].change = d.change;
-    }
-  });
-  // Any remaining placeholders — mark N/A
-  for (let i = 0; i < snapshotData.length; i++) {
-    if (snapshotData[i].value === '...') { snapshotData[i].value = 'N/A'; snapshotData[i].change = null; }
-  }
-}
+    <section class="mx-auto max-w-7xl px-5 py-14" id="correlation">
+      <div class="mb-7"><p class="eyebrow text-[.65rem] text-lime">Cross-Market Risk</p><h2 class="display mt-2 text-2xl font-semibold text-white">EQUITY &amp; rTOKEN CORRELATION MONITOR</h2><p class="mt-2 text-xs text-muted">Rolling daily-return relationships between SPY / QQQ and the Bitget rToken universe</p></div>
+      <div class="panel overflow-x-auto rounded-sm">
+        <table><thead><tr><th>Asset</th><th>SPY Correlation</th><th>QQQ Correlation</th><th>Benchmark Tilt</th><th>Window</th></tr></thead><tbody id="correlation-body"></tbody></table>
+      </div>
+    </section>
 
-// applyMeme() removed — meme scanner has been replaced by rToken divergence scanner.
-// See fetchDivergence() which populates rtokenData from /api/stock-divergence.
+    <section class="mx-auto max-w-7xl px-5 py-14" id="sentiment">
+      <div class="mb-7 flex flex-wrap items-end justify-between gap-4">
+        <div><p class="eyebrow text-[.65rem] text-lime">Narrative Layer</p><h2 class="display mt-2 text-2xl font-semibold text-white">US EQUITY &amp; MACRO SENTIMENT</h2></div>
+        <div class="text-right"><p class="display text-3xl font-semibold text-mint" id="sentiment-score">—</p><p class="text-[.65rem] text-muted" id="sentiment-class">CONNECTING</p></div>
+      </div>
+      <div class="grid gap-4 md:grid-cols-3" id="sentiment-grid"></div>
+    </section>
 
-function applyFearGreed(fgArr) {
-  if (!fgArr || !fgArr.length) return;
-  const current = fgArr[0].value;
-  const trend = fgArr.map(d => d.value).reverse();
+    <section class="mx-auto max-w-7xl px-5 py-14" id="architecture">
+      <div class="mb-7"><p class="eyebrow text-[.65rem] text-lime">System Design</p><h2 class="display mt-2 text-2xl font-semibold text-white">ARCHITECTURE &amp; DATA SOURCES</h2></div>
+      <div class="grid gap-3 md:grid-cols-4">
+        <div class="panel rounded-sm p-5"><p class="eyebrow text-[.6rem] text-mint">01 · Ingest</p><h3 class="display mt-3 text-lg text-white">Market Data</h3><div class="section-rule my-4"></div><p class="text-xs leading-6 text-muted">Yahoo Finance API<br>Bitget rToken Spot API<br>US Macro &amp; Equity Data</p></div>
+        <div class="panel rounded-sm p-5"><p class="eyebrow text-[.6rem] text-mint">02 · Detect</p><h3 class="display mt-3 text-lg text-white">Signal Layer</h3><div class="section-rule my-4"></div><p class="text-xs leading-6 text-muted">Basis Scanner<br>Volume Shift Engine<br>Correlation Monitor</p></div>
+        <div class="panel rounded-sm p-5"><p class="eyebrow text-[.6rem] text-mint">03 · Reason</p><h3 class="display mt-3 text-lg text-white">AI Analyst</h3><div class="section-rule my-4"></div><p class="text-xs leading-6 text-muted">Event Classification<br>Market Regime Filter<br>Risk Validation</p></div>
+        <div class="panel rounded-sm p-5"><p class="eyebrow text-[.6rem] text-mint">04 · Execute</p><h3 class="display mt-3 text-lg text-white">Paper Engine</h3><div class="section-rule my-4"></div><p class="text-xs leading-6 text-muted">rToken-Only Universe<br>Position Controls<br>Audit Log</p></div>
+      </div>
+    </section>
 
-  // Classification and color
-  const fgLabel = current <= 25 ? 'Extreme Fear' : current <= 45 ? 'Fear' : current <= 55 ? 'Neutral' : current <= 75 ? 'Greed' : 'Extreme Greed';
-  const fgColor = current <= 25 ? '#ff4444' : current <= 45 ? '#ffaa00' : current <= 55 ? '#00d4ff' : current <= 75 ? '#00d4ff' : '#00ff88';
+    <section class="mx-auto max-w-7xl px-5 py-14" id="trades">
+      <div class="mb-7 flex flex-wrap items-end justify-between gap-4">
+        <div><p class="eyebrow text-[.65rem] text-lime">Paper Execution</p><h2 class="display mt-2 text-2xl font-semibold text-white">AUTONOMOUS TRADE LOG</h2><p class="mt-2 text-xs text-muted">Restricted to $rNVDA, $rTSLA, $rAAPL, $rMSFT, $rCOIN, and $rAMZN</p></div>
+        <button class="border border-mint/40 bg-mint/5 px-5 py-3 text-xs font-semibold tracking-[.12em] text-mint" id="trade-btn">GENERATE PAPER TRADES</button>
+      </div>
+      <div class="panel overflow-x-auto rounded-sm"><table><thead><tr><th>Time</th><th>Asset</th><th>Side</th><th>Size</th><th>Entry</th><th>Stop</th><th>Target</th><th>Rationale</th><th>Status</th></tr></thead><tbody id="trade-body"></tbody></table></div>
+      <p class="mt-3 text-[.65rem] text-muted" id="trade-engine">Paper trading only. No orders are transmitted.</p>
+    </section>
+  </main>
+  <footer class="relative z-10 mt-12 border-t border-line px-5 py-10 text-center"><p class="eyebrow text-[.6rem] text-muted">WhalePulse AI · Bitget AI Hackathon Season 2 · Track 3: Tokenized Stocks · Paper Trading Only</p></footer>
+  <script>
+    const state={market:null};
+    const money=(value)=>Number.isFinite(value)?'$'+Number(value).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:4}):'—';
+    const percent=(value)=>Number.isFinite(value)?`${value>=0?'+':''}${value.toFixed(2)}%`:'—';
+    const tone=(value)=>!Number.isFinite(value)?'text-muted':value>=0?'text-mint':'text-red';
+    const safe=(value)=>String(value??'—').replace(/[&<>'"]/g,(char)=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':'&quot;'}[char]));
 
-  try {
-    // Update gauge needle + value color
-    gaugeChart.setOption({ series:[{ data:[{ value: current }], detail: { color: fgColor } }] });
-
-    // Build date labels from timestamps (or fallback to D-N)
-    let labels;
-    if (fgArr[0].ts) {
-      labels = fgArr.map(d => {
-        const dt = new Date(d.ts * 1000);
-        return dt.toLocaleDateString('en-US', { month:'short', day:'numeric' });
-      }).reverse();
-    } else {
-      labels = fgArr.map((_, i) => 'D-' + (fgArr.length - 1 - i)).reverse();
-    }
-
-    // Dynamic Y-axis range
-    const minVal = Math.min(...trend);
-    const maxVal = Math.max(...trend);
-    const yMin = Math.max(0, Math.floor(minVal / 5) * 5 - 5);
-    const yMax = Math.min(100, Math.ceil(maxVal / 5) * 5 + 5);
-
-    fearTrend.setOption({
-      xAxis: { data: labels },
-      yAxis: { min: yMin, max: yMax },
-      series: [{ data: trend }]
-    });
-
-    // Update classification label
-    const fgEl = document.getElementById('fg-label');
-    if (fgEl) {
-      const contrarian = current < 40 ? 'contrarian opportunity window' : current > 60 ? 'caution \u2014 overheated' : 'balanced sentiment';
-      fgEl.textContent = 'Market in ' + fgLabel + ' zone (' + current + '/100) \u2014 ' + contrarian;
-      fgEl.style.color = fgColor;
-    }
-  } catch(e) { console.warn('[WhalePulse] gauge update error:', e); }
-}
-
-async function fetchLivePrices() {
-  try {
-    const res = await fetch('/api/live-prices');
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error || 'API error');
-    const data = json.data;
-
-    // Store raw prices for trade log / correlation
-    if (data.snapshot) {
-      const byLabel = {};
-      data.snapshot.forEach(d => { byLabel[d.label] = d; });
-      if (byLabel['BTC'] && byLabel['BTC'].value) { livePrices.BTC = byLabel['BTC'].value; livePrices.btcChange = byLabel['BTC'].change; }
-      if (byLabel['ETH'] && byLabel['ETH'].value) { livePrices.ETH = byLabel['ETH'].value; livePrices.ethChange = byLabel['ETH'].change; }
-      if (byLabel['SOL'] && byLabel['SOL'].value) livePrices.SOL = byLabel['SOL'].value;
-      if (byLabel['BNB'] && byLabel['BNB'].value) livePrices.BNB = byLabel['BNB'].value;
-      if (byLabel['XRP'] && byLabel['XRP'].value) livePrices.XRP = byLabel['XRP'].value;
-      if (byLabel['DOGE'] && byLabel['DOGE'].value) livePrices.DOGE = byLabel['DOGE'].value;
-    }
-    if (data.meme) {
-      // Keep raw price map only (used by trade log fallbacks); UI no longer renders meme tokens.
-      data.meme.forEach(m => { if (m.price !== null) livePrices[m.token] = m.price; });
-    }
-    if (data.fear_greed && data.fear_greed[0]) livePrices.fearGreed = data.fear_greed[0].value;
-
-    if (data.snapshot && data.snapshot.length) applySnapshot(data.snapshot);
-    if (data.fear_greed) applyFearGreed(data.fear_greed);
-
-    renderSnapshot();
-    renderTradeLog();
-    renderCorrelation();
-    console.log('[WhalePulse] Live CoinGecko prices updated at', new Date().toISOString());
-  } catch (e) {
-    console.warn('[WhalePulse] Price fetch failed:', e.message);
-  }
-}
-
-// Fetch on page load — AFTER charts are initialized below
-// Set header date
-document.getElementById('header-date').textContent = new Date().toISOString().slice(0,10);
-
-// SECTION 3: FEAR & GREED GAUGE
-const gaugeChart = echarts.init(document.getElementById('gauge-chart'), null, { renderer:'svg' });
-gaugeChart.setOption({
-  series:[{
-    type:'gauge', startAngle:180, endAngle:0, min:0, max:100, radius:'95%',
-    progress:{ show:true, width:18, roundCap:true,
-      itemStyle:{ color:{ type:'linear', x:0,y:0,x2:1,y2:0, colorStops:[{offset:0,color:'#ff4444'},{offset:.5,color:'#ffaa00'},{offset:1,color:'#00ff88'}] }}
-    },
-    pointer:{ length:'60%', width:4, itemStyle:{ color:'#fff' }},
-    axisLine:{ lineStyle:{ width:18, color:[[.25,'#ff4444'],[.5,'#ffaa00'],[.75,'#00d4ff'],[1,'#00ff88']] }},
-    axisTick:{ show:false }, splitLine:{ show:false },
-    axisLabel:{ distance:28, fontSize:10, color:'#5a6a8a', fontFamily:'JetBrains Mono',
-      formatter:function(v){var m={0:'Extreme\nFear',25:'Fear',50:'Neutral',75:'Greed',100:'Extreme\nGreed'};return m[v]||''}
-    },
-    detail:{ valueAnimation:true, fontSize:36, fontFamily:'Orbitron', color:'#ffaa00',
-      formatter:'{value}', offsetCenter:[0,'15%']
-    },
-    title:{ show:false },
-    data:[{ value:0 }]
-  }]
-});
-
-const fearTrend = echarts.init(document.getElementById('fear-trend'), null, { renderer:'svg' });
-fearTrend.setOption({
-  grid:{ top:10, right:10, bottom:24, left:30 },
-  xAxis:{ type:'category', data:[],
-    axisLine:{ lineStyle:{color:'rgba(0,212,255,.15)'}}, axisLabel:{ fontSize:9, color:'#5a6a8a', fontFamily:'JetBrains Mono' }, axisTick:{show:false}
-  },
-  yAxis:{ type:'value', min:0, max:100, splitLine:{ lineStyle:{color:'rgba(255,255,255,.03)'}},
-    axisLabel:{ fontSize:9, color:'#5a6a8a', fontFamily:'JetBrains Mono' }
-  },
-  series:[{
-    type:'line', data:[], smooth:true, symbol:'circle', symbolSize:6,
-    lineStyle:{ color:'#ffaa00', width:2 },
-    itemStyle:{ color:'#ffaa00', borderColor:'#0a0e17', borderWidth:2 },
-    areaStyle:{ color:{ type:'linear', x:0,y:0,x2:0,y2:1, colorStops:[{offset:0,color:'rgba(255,170,0,.2)'},{offset:1,color:'rgba(255,170,0,0)'}] }},
-    markLine:{ silent:true, data:[{yAxis:50, label:{show:false}, lineStyle:{color:'rgba(0,212,255,.15)',type:'dashed'}}] }
-  }],
-  tooltip:{ trigger:'axis', backgroundColor:'#151d2e', borderColor:'rgba(0,212,255,.2)',
-    textStyle:{ fontFamily:'JetBrains Mono', fontSize:11, color:'#c8d6e5' }
-  }
-});
-
-// NOW fetch live data (charts are ready)
-fetchLivePrices();
-setInterval(fetchLivePrices, 30000);
-
-// SECTION 4 + 5: rToken divergence scanner + rToken/Stock derivatives panel
-// Both are populated by fetchDivergence() which hits /api/stock-divergence.
-renderRtokenDerivPanel();       // shows loading placeholder
-fetchDivergence();              // populate immediately
-setInterval(fetchDivergence, 45000); // refresh every 45s
-
-document.getElementById('whale-alerts').innerHTML = whaleAlerts.map(a => `
-  <div class="alert-item" style="border-left-color:${a.severity==='high'?'#ff4444':'#ffaa00'}">
-    <span class="text-dimText text-[.65rem]">${a.time} UTC</span>
-    <p class="text-white/90 mt-0.5">${a.text}</p>
-  </div>
-`).join('');
-
-// SECTION 6: TRADFI BRIDGE
-document.getElementById('tradfi-findings').innerHTML = `
-  <h3 class="font-display text-xs tracking-[.15em] text-neon uppercase">Key Intelligence</h3>
-  ${tradfiFindings.map(f => `
-    <div class="flex items-start gap-2">
-      <span class="text-cyan mt-0.5 text-xs">\u25b8</span>
-      <p class="font-mono text-sm text-white/80">${f}</p>
-    </div>
-  `).join('')}
-`;
-
-// SECTION 6: CORRELATION — rendered dynamically from live prices
-renderCorrelation();
-
-// SECTION 7: TRENDING
-document.getElementById('cg-trending').innerHTML = cgTrending.map(t => `
-  <div class="trending-card glass p-3 box-glow-cyan">
-    <span class="font-display text-[.6rem] text-cyan">#${t.rank}</span>
-    <p class="font-display text-sm text-white mt-1">${t.sym}</p>
-    <p class="font-mono text-[.65rem] text-dimText">${t.name}</p>
-  </div>
-`).join('');
-
-document.getElementById('sol-trending').innerHTML = solTrending.map(t => `
-  <div class="trending-card glass p-3 box-glow-green">
-    <span class="font-mono text-[.55rem] text-neon">${t.tag}</span>
-    <p class="font-display text-sm text-white mt-1">${t.name}</p>
-    <p class="font-mono text-[.65rem] text-dimText">Solana</p>
-  </div>
-`).join('');
-
-// SECTION 8: SENTIMENT CARDS
-document.getElementById('sentiment-cards').innerHTML = sentimentSources.map(s => `
-  <div class="glass p-5">
-    <p class="font-display text-xs tracking-[.1em] text-cyan uppercase mb-2">${s.src}</p>
-    <p class="font-mono text-sm text-white/80 mb-3">${s.text}</p>
-    <div class="flex items-center gap-3">
-      <div class="flex-1 bg-white/5 rounded-full h-2"><div class="h-2 rounded-full" style="width:${s.score}%;background:${s.color}"></div></div>
-      <span class="font-mono text-xs" style="color:${s.color}">${s.score}/100</span>
-    </div>
-  </div>
-`).join('');
-
-// SECTION 9: ARCHITECTURE
-document.getElementById('arch-flow').innerHTML = archNodes.map(function(n,i){return (
-  (i > 0 ? '<div class="arch-arrow text-2xl hidden md:flex">\u2192</div>' : '') +
-  '<div class="arch-box" style="border-color:'+n.color+'30">' +
-    '<p class="font-display text-[.65rem] tracking-widest uppercase" style="color:'+n.color+'">'+n.title+'</p>' +
-    '<div class="mt-2 space-y-0.5">'+n.items.map(function(it){return '<p class="font-mono text-[.6rem] text-dimText">'+it+'</p>'}).join('')+'</div>' +
-  '</div>'
-)}).join('');
-
-// SECTION 10: TRADE LOG — rendered dynamically from live prices
-renderTradeLog();
-
-// =============================================
-// GSAP SCROLL ANIMATIONS
-// =============================================
-gsap.registerPlugin(ScrollTrigger);
-document.querySelectorAll('.reveal').forEach(el => {
-  gsap.fromTo(el, { opacity:0, y:40 }, {
-    opacity:1, y:0, duration:0.8, ease:'power2.out',
-    scrollTrigger:{ trigger:el, start:'top 85%', toggleActions:'play none none none' }
-  });
-});
-
-// PROGRESS BAR
-window.addEventListener('scroll', () => {
-  const h = document.documentElement;
-  const pct = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100;
-  document.getElementById('progress').style.width = pct + '%';
-});
-
-// ECHARTS RESIZE
-window.addEventListener('resize', () => { gaugeChart.resize(); fearTrend.resize(); });
-
-// =============================================
-// QWEN AI INTEGRATION — API CALLS + RENDERING
-// =============================================
-
-// Health check on load
-async function checkQwenHealth() {
-  const dot = document.getElementById('qwen-dot');
-  const text = document.getElementById('qwen-status-text');
-  const banner = document.getElementById('qwen-banner');
-  text.textContent = 'Checking...';
-  try {
-    const resp = await fetch('/api/health');
-    const h = await resp.json();
-    if (h.qwen_api_reachable) {
-      dot.className = 'inline-block w-3 h-3 rounded-full bg-[#00ff88]';
-      dot.style.background = '#00ff88';
-      text.textContent = 'Connected to Qwen 3.8 Max — All systems operational';
-      banner.style.borderColor = 'rgba(0,255,136,.2)';
-    } else if (h.qwen_configured) {
-      dot.style.background = '#ff4444';
-      const msg = h.qwen_message || '';
-      const detail = msg.includes('invalid_api_key')
-        ? 'API key rejected — verify your key is activated at console.aliyun.com'
-        : msg.includes('401') ? 'Authentication failed — check key format' : msg.substring(0,100);
-      text.textContent = 'Key configured but API unreachable: ' + detail;
-      text.innerHTML = 'Key configured but API unreachable. <span class="text-amber">Buttons will show the error; fix the key and recheck.</span>';
-      banner.style.borderColor = 'rgba(255,68,68,.2)';
-    } else {
-      dot.style.background = '#ffaa00';
-      text.textContent = 'QWEN_API_KEY not set — export it in your shell environment';
-      banner.style.borderColor = 'rgba(255,170,0,.2)';
-    }
-  } catch(e) {
-    dot.style.background = '#ff4444';
-    text.textContent = 'Cannot reach backend server';
-    banner.style.borderColor = 'rgba(255,68,68,.2)';
-  }
-}
-setTimeout(checkQwenHealth, 500);
-
-function showPanel(prefix, state) {
-  ['idle','loading','result','error'].forEach(s => {
-    const el = document.getElementById(prefix + '-' + s);
-    if (el) el.classList.toggle('hidden', s !== state);
-  });
-  const panel = document.getElementById(prefix + '-panel');
-  if (panel) panel.classList.toggle('loading', state === 'loading');
-}
-
-function setBtn(id, running) {
-  const btn = document.getElementById(id);
-  if (!btn) return;
-  btn.disabled = running;
-  btn.classList.toggle('running', running);
-  btn.innerHTML = running
-    ? '<span class="ai-loading">&#9679;</span> Processing...'
-    : '<span class="live-dot" style="width:6px;height:6px"></span> ' + btn.dataset.label;
-}
-
-// Store original labels
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('btn-sentiment').dataset.label = 'Run Analysis';
-  document.getElementById('btn-whale').dataset.label = 'Classify Alerts';
-  document.getElementById('btn-trades').dataset.label = 'Generate Trades';
-});
-
-function tagClass(val) {
-  if (!val) return 'ai-tag-neutral';
-  const v = val.toLowerCase();
-  if (v.includes('bull') || v.includes('accumul') || v.includes('risk-on') || v.includes('greed')) return 'ai-tag-bull';
-  if (v.includes('bear') || v.includes('distribut') || v.includes('risk-off') || v.includes('fear')) return 'ai-tag-bear';
-  return 'ai-tag-neutral';
-}
-
-// ---------- SENTIMENT ----------
-async function runSentiment() {
-  setBtn('btn-sentiment', true);
-  showPanel('qwen-sentiment', 'loading');
-  try {
-    const resp = await fetch('/api/sentiment');
-    const json = await resp.json();
-    if (!json.ok) throw new Error(json.error || 'API error');
-    const d = json.data;
-    if (d.error) throw new Error(d.error + (d.raw ? ': ' + d.raw.substring(0,200) : ''));
-
-    const scoreColor = d.overall_score < 40 ? '#ff4444' : d.overall_score < 60 ? '#ffaa00' : '#00ff88';
-    document.getElementById('qs-score').textContent = d.overall_score;
-    document.getElementById('qs-score').style.color = scoreColor;
-    document.getElementById('qs-class').textContent = d.classification || '—';
-    document.getElementById('qs-class').className = 'ai-tag ' + tagClass(d.classification);
-
-    if (d.contrarian_signal) {
-      document.getElementById('qs-contrarian').innerHTML =
-        'Contrarian Signal: <span class="ai-tag ' + tagClass(d.contrarian_signal) + '">' + d.contrarian_signal + '</span>';
+    async function api(path){
+      const response=await fetch(path);
+      const json=await response.json();
+      if(!response.ok||!json.ok)throw new Error(json.error||'Request failed');
+      return json.data;
     }
 
-    const drivers = d.key_drivers || [];
-    document.getElementById('qs-drivers').innerHTML = drivers.map(function(dr) {
-      return '<div class="ai-driver">' + dr + '</div>';
-    }).join('');
-
-    document.getElementById('qs-narrative').textContent = d.narrative_rotation || '—';
-    document.getElementById('qs-summary').textContent = d.summary || '—';
-
-    if (d.confidence != null) {
-      document.getElementById('qs-confidence').innerHTML =
-        'Confidence: <span class="text-cyan">' + (d.confidence * 100).toFixed(0) + '%</span>';
+    function renderPlaceholders(){
+      document.getElementById('ticker-grid').innerHTML=Array.from({length:8},()=>'<div class="panel ticker-card rounded-sm p-5"><div class="skeleton h-3 w-16 rounded"></div><div class="skeleton mt-4 h-7 w-28 rounded"></div><div class="skeleton mt-3 h-3 w-20 rounded"></div></div>').join('');
+      document.getElementById('basis-body').innerHTML='<tr><td colspan="7" class="py-8 text-center text-muted">Loading live rToken and equity prices…</td></tr>';
+      document.getElementById('flow-grid').innerHTML='<div class="panel rounded-sm p-5 text-sm text-muted">Loading institutional flow intelligence…</div>';
+      document.getElementById('correlation-body').innerHTML='<tr><td colspan="5" class="py-8 text-center text-muted">Calculating rolling correlations…</td></tr>';
+      document.getElementById('sentiment-grid').innerHTML='<div class="panel rounded-sm p-5 text-sm text-muted">Loading US equity and macro signals…</div>';
+      document.getElementById('trade-body').innerHTML='<tr><td colspan="9" class="py-8 text-center text-muted">Generate the current rToken paper-trade slate.</td></tr>';
     }
 
-    showPanel('qwen-sentiment', 'result');
-
-    // Update the static sentiment pipeline with live score
-    updateSentimentPipeline(d);
-  } catch (e) {
-    document.getElementById('qs-error-msg').textContent = 'Error: ' + e.message;
-    showPanel('qwen-sentiment', 'error');
-  }
-  setBtn('btn-sentiment', false);
-}
-
-function updateSentimentPipeline(d) {
-  // Update the static pipeline score and signal in section 8
-  const pipeBoxes = document.querySelectorAll('#sentiment .arch-box');
-  if (pipeBoxes.length >= 4) {
-    pipeBoxes[2].querySelector('p:last-child').textContent = (d.overall_score || '—') + ' / 100';
-    const cls = d.classification || 'Unknown';
-    pipeBoxes[3].querySelector('p:last-child').textContent = cls;
-  }
-}
-
-// ---------- WHALE CLASSIFY ----------
-async function runWhaleClassify() {
-  setBtn('btn-whale', true);
-  showPanel('qw', 'loading');
-  try {
-    const resp = await fetch('/api/whale-classify');
-    const json = await resp.json();
-    if (!json.ok) throw new Error(json.error || 'API error');
-    const d = json.data;
-    if (d.error) throw new Error(d.error + (d.raw ? ': ' + d.raw.substring(0,200) : ''));
-
-    const alerts = d.alerts || [];
-    document.getElementById('qw-alerts-list').innerHTML = alerts.map(function(a) {
-      const impl = (a.implication || 'neutral').toLowerCase();
-      const cssClass = impl.includes('bull') ? 'bullish' : impl.includes('bear') ? 'bearish' : 'neutral';
-      return '<div class="whale-classified ' + cssClass + '">' +
-        '<div class="flex items-center justify-between flex-wrap gap-2 mb-1">' +
-          '<span class="text-white text-sm font-bold">' + (a.asset || '?') + '</span>' +
-          '<div class="flex gap-2">' +
-            '<span class="ai-tag ' + tagClass(a.direction) + '">' + (a.direction || '?') + '</span>' +
-            '<span class="ai-tag ' + tagClass(a.implication) + '">' + (a.implication || '?') + '</span>' +
-            '<span class="ai-tag ' + tagClass(a.impact === 'high' ? 'bear' : 'neutral') + '">' + (a.impact || '?') + ' impact</span>' +
-          '</div>' +
-        '</div>' +
-        '<p class="text-white/70 text-sm">' + (a.original || '') + '</p>' +
-        (a.action ? '<p class="text-cyan text-xs mt-1">\u25b8 ' + a.action + '</p>' : '') +
-      '</div>';
-    }).join('');
-
-    document.getElementById('qw-net-flow').innerHTML =
-      '<p class="font-mono text-xs text-dimText mb-1">Net Flow Bias</p>' +
-      '<span class="ai-tag ' + tagClass(d.net_flow_bias) + '">' + (d.net_flow_bias || '—') + '</span>';
-
-    document.getElementById('qw-smart-money').innerHTML =
-      '<p class="font-mono text-xs text-dimText mb-1 mt-3">Smart Money Direction</p>' +
-      '<span class="ai-tag ' + tagClass(d.smart_money_direction) + '">' + (d.smart_money_direction || '—') + '</span>';
-
-    showPanel('qw', 'result');
-  } catch (e) {
-    document.getElementById('qw-error-msg').textContent = 'Error: ' + e.message;
-    showPanel('qw', 'error');
-  }
-  setBtn('btn-whale', false);
-}
-
-// ---------- rTOKEN PRICES ----------
-async function fetchRTokenPrices() {
-  try {
-    const res = await fetch('/api/rtoken-prices');
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error || 'API error');
-    const tokens = json.data || [];
-    const grid = document.getElementById('rtoken-grid');
-    if (!grid || !tokens.length) return;
-    grid.innerHTML = tokens.map(function(t) {
-      const pct = (t.change24h * 100);
-      const colorClass = pct >= 0 ? 'text-neon' : 'text-danger';
-      const glowClass = pct >= 0 ? 'box-glow-green' : 'box-glow-amber';
-      return '<div class="glass p-4 ' + glowClass + ' flex flex-col gap-1">' +
-        '<div class="flex items-center gap-2">' +
-          '<span class="font-display text-xs text-cyan">$</span>' +
-          '<span class="font-mono text-xs text-dimText">' + t.label + '</span>' +
-        '</div>' +
-        '<span class="font-display text-xl text-white">$' + t.price.toLocaleString('en-US', {maximumFractionDigits:2}) + '</span>' +
-        '<span class="font-mono text-xs ' + colorClass + '">' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%</span>' +
-        '<div class="flex justify-between font-mono text-[.6rem] text-dimText mt-1">' +
-          '<span>H: $' + t.high24h.toFixed(2) + '</span>' +
-          '<span>L: $' + t.low24h.toFixed(2) + '</span>' +
-        '</div>' +
-      '</div>';
-    }).join('');
-    console.log('[WhalePulse] rToken prices updated:', tokens.length, 'pairs');
-  } catch(e) {
-    console.warn('[WhalePulse] rToken fetch failed:', e.message);
-  }
-}
-// Fetch rTokens on load and every 60s
-fetchRTokenPrices();
-setInterval(fetchRTokenPrices, 60000);
-
-// ---------- AGENT EVENT LOOP ----------
-async function runAgentLoop() {
-  var btn = document.getElementById('btn-agent');
-  if (btn) { btn.disabled = true; btn.classList.add('running'); btn.innerHTML = '<span class="ai-loading">&#9679;</span> Scanning...'; }
-  showPanel('agent', 'loading');
-  try {
-    const resp = await fetch('/api/agent-events');
-    const json = await resp.json();
-    if (!json.ok) throw new Error(json.error || 'API error');
-    const d = json.data;
-    if (d.error) throw new Error(d.error + (d.raw ? ': ' + d.raw.substring(0,200) : ''));
-
-    var stateTag = document.getElementById('agent-state-tag');
-    if (stateTag) {
-      stateTag.textContent = 'Agent: ' + (d.agent_state || 'scanning');
-      stateTag.className = 'ai-tag ' + tagClass(d.agent_state === 'trading' ? 'bull' : d.agent_state === 'alert' ? 'bear' : 'neutral');
+    function renderMarket(market){
+      state.market=market;
+      document.getElementById('hero-regime').textContent=market.regime.code;
+      document.getElementById('hero-time').textContent=`${market.regime.ny_time} · ${market.regime.discovery_mode}`;
+      document.getElementById('basis-regime').textContent=`NY REGIME: ${market.regime.code}`;
+      document.getElementById('source-state').textContent=`Bitget: ${market.sources.bitget.toUpperCase()} · Yahoo Finance: ${market.sources.yahoo_finance.toUpperCase()} · Updated ${new Date(market.updated_at).toLocaleTimeString()}`;
+      document.getElementById('ticker-grid').innerHTML=market.assets.map((asset)=>`
+        <article class="panel ticker-card rounded-sm p-5">
+          <div class="flex items-center justify-between gap-2"><p class="display text-sm font-semibold text-white">$${safe(asset.label)}</p><span class="badge">${safe(market.regime.code)}</span></div>
+          <p class="display mt-4 text-2xl font-semibold text-white">${money(asset.price)}</p>
+          <div class="mt-3 flex items-center justify-between text-[.68rem]"><span class="${tone(asset.change_pct)}">${percent(asset.change_pct)}</span><span class="text-muted">${safe(asset.stock)}</span></div>
+          <p class="mt-3 border-t border-line pt-3 text-[.62rem] text-muted">BASIS <span class="${tone(asset.basis_pct)}">${percent(asset.basis_pct)}</span></p>
+        </article>`).join('');
+      document.getElementById('basis-body').innerHTML=market.assets.map((asset)=>`
+        <tr><td class="font-semibold text-white">$${safe(asset.label)}</td><td>${money(asset.price)}</td><td class="text-mint">${safe(asset.stock)}</td><td>${money(asset.equity_price)}</td><td class="${tone(asset.change_pct)}">${percent(asset.change_pct)}</td><td class="${tone(asset.basis_pct)}">${percent(asset.basis_pct)}</td><td><span class="badge">${safe(asset.basis_state)}</span></td></tr>`).join('');
     }
-    var nextScan = document.getElementById('agent-next-scan');
-    if (nextScan) nextScan.textContent = 'Next scan: ' + (d.next_scan_seconds || 60) + 's';
 
-    var list = document.getElementById('agent-events-list');
-    var events = d.events || [];
-    if (list) {
-      list.innerHTML = events.map(function(ev) {
-        var sevColor = ev.severity === 'critical' ? '#ff4444' : ev.severity === 'high' ? '#ffaa00' : ev.severity === 'medium' ? '#00d4ff' : '#5a6a8a';
-        var actColor = ev.action.includes('long') ? '#00ff88' : ev.action.includes('short') ? '#ff4444' : ev.action === 'monitor' ? '#ffaa00' : '#5a6a8a';
-        return '<div class="glass p-4" style="border-left:3px solid ' + sevColor + '">' +
-          '<div class="flex items-center justify-between mb-2 flex-wrap gap-2">' +
-            '<div class="flex items-center gap-2">' +
-              '<span class="ai-tag" style="background:' + sevColor + '20;color:' + sevColor + ';border:1px solid ' + sevColor + '40">' + (ev.severity || '?') + '</span>' +
-              '<span class="font-mono text-xs text-white">' + (ev.event_type || '?').replace(/_/g,' ') + '</span>' +
-            '</div>' +
-            '<div class="flex items-center gap-2">' +
-              '<span class="font-mono text-xs font-bold" style="color:' + actColor + '">' + (ev.action || 'no_action').replace(/_/g,' ').toUpperCase() + '</span>' +
-              (ev.asset ? '<span class="font-mono text-xs text-cyan">' + ev.asset + '</span>' : '') +
-              (ev.confidence != null ? '<span class="font-mono text-[.6rem] text-dimText">' + (ev.confidence * 100).toFixed(0) + '% conf</span>' : '') +
-            '</div>' +
-          '</div>' +
-          '<p class="font-mono text-sm text-white/80">' + (ev.description || '') + '</p>' +
-          (ev.reasoning ? '<p class="font-mono text-xs text-dimText mt-1">' + ev.reasoning + '</p>' : '') +
-        '</div>';
-      }).join('');
+    async function loadMarket(){
+      try{renderMarket(await api('/api/market'));}
+      catch(error){document.getElementById('source-state').textContent=`Live source error: ${error.message}`;}
     }
-    showPanel('agent', 'result');
-  } catch(e) {
-    var errMsg = document.getElementById('agent-error-msg');
-    if (errMsg) errMsg.textContent = 'Error: ' + e.message;
-    showPanel('agent', 'error');
-  }
-  if (btn) { btn.disabled = false; btn.classList.remove('running'); btn.innerHTML = '<span class="live-dot" style="width:6px;height:6px"></span> Run Agent Scan'; }
-}
 
-// Store agent button label
-document.addEventListener('DOMContentLoaded', function() {
-  var agentBtn = document.getElementById('btn-agent');
-  if (agentBtn) agentBtn.dataset.label = 'Run Agent Scan';
-});
+    async function loadFlow(){
+      try{
+        const data=await api('/api/flow-intelligence');
+        document.getElementById('flow-grid').innerHTML=data.events.map((event)=>`
+          <article class="panel rounded-sm p-5">
+            <div class="flex items-center justify-between gap-3"><span class="eyebrow text-[.58rem] text-mint">${safe(event.type)}</span><span class="badge">${safe(event.severity)}</span></div>
+            <h3 class="display mt-4 text-xl font-semibold text-white">${safe(event.asset)}</h3><p class="mt-2 text-xs leading-6 text-muted">${safe(event.detail)}</p>
+          </article>`).join('');
+      }catch(error){document.getElementById('flow-grid').innerHTML=`<div class="panel rounded-sm p-5 text-sm text-red">${safe(error.message)}</div>`;}
+    }
 
-// ---------- TRADE DECISIONS ----------
-async function runTradeDecisions() {
-  setBtn('btn-trades', true);
-  showPanel('qt', 'loading');
-  try {
-    const resp = await fetch('/api/trade-decisions');
-    const json = await resp.json();
-    if (!json.ok) throw new Error(json.error || 'API error');
-    const d = json.data;
-    if (d.error) throw new Error(d.error + (d.raw ? ': ' + d.raw.substring(0,200) : ''));
+    async function loadCorrelations(){
+      try{
+        const data=await api('/api/correlations');
+        document.getElementById('correlation-body').innerHTML=data.rows.map((row)=>{
+          const tilt=!Number.isFinite(row.spy)||!Number.isFinite(row.qqq)?'INSUFFICIENT DATA':row.qqq>row.spy?'QQQ':'SPY';
+          const bar=(value)=>Number.isFinite(value)?Math.max(0,Math.min(100,(value+1)*50)):0;
+          return `<tr><td class="font-semibold text-white">$${safe(row.label)}</td><td><span class="${tone(row.spy)}">${Number.isFinite(row.spy)?row.spy.toFixed(3):'—'}</span><div class="bar mt-2 w-32"><i style="width:${bar(row.spy)}%"></i></div></td><td><span class="${tone(row.qqq)}">${Number.isFinite(row.qqq)?row.qqq.toFixed(3):'—'}</span><div class="bar mt-2 w-32"><i style="width:${bar(row.qqq)}%"></i></div></td><td><span class="badge">${tilt}</span></td><td class="text-muted">${row.observations}D</td></tr>`;
+        }).join('');
+      }catch(error){document.getElementById('correlation-body').innerHTML=`<tr><td colspan="5" class="py-8 text-center text-red">${safe(error.message)}</td></tr>`;}
+    }
 
-    document.getElementById('qt-regime').textContent = 'Regime: ' + (d.market_regime || '—');
-    document.getElementById('qt-regime').className = 'ai-tag ' + tagClass(d.market_regime);
-    document.getElementById('qt-risk').textContent = 'Risk: ' + (d.portfolio_risk || '—');
-    document.getElementById('qt-risk').className = 'ai-tag ' + tagClass(
-      d.portfolio_risk === 'low' ? 'bull' : d.portfolio_risk === 'high' ? 'bear' : 'neutral'
-    );
-    document.getElementById('qt-max-pos').textContent =
-      'Max concurrent: ' + (d.max_concurrent_positions || '—');
+    async function loadSentiment(){
+      try{
+        const data=await api('/api/sentiment');
+        document.getElementById('sentiment-score').textContent=data.score;
+        document.getElementById('sentiment-class').textContent=data.classification;
+        document.getElementById('sentiment-grid').innerHTML=data.feeds.map((feed)=>`
+          <article class="panel rounded-sm p-5"><div class="flex items-center justify-between gap-3"><p class="eyebrow text-[.6rem] text-mint">${safe(feed.source)}</p><span class="badge">${safe(feed.signal)}</span></div><p class="mt-5 text-xs leading-6 text-muted">${safe(feed.detail)}</p></article>`).join('');
+      }catch(error){document.getElementById('sentiment-grid').innerHTML=`<div class="panel rounded-sm p-5 text-sm text-red">${safe(error.message)}</div>`;}
+    }
 
-    const decs = d.decisions || [];
-    document.getElementById('qt-cards').innerHTML = decs.map(function(t) {
-      const sideColor = t.side === 'LONG' ? '#00ff88' : t.side === 'SHORT' ? '#ff4444' : '#ffaa00';
-      const convTag = t.conviction === 'high' ? 'ai-tag-bull' : t.conviction === 'low' ? 'ai-tag-bear' : 'ai-tag-neutral';
-      return '<div class="trade-dec-card" style="border-left:3px solid ' + sideColor + '">' +
-        '<div class="flex items-center justify-between mb-2">' +
-          '<span class="font-display text-sm text-white">' + (t.asset || '?') + '</span>' +
-          '<div class="flex gap-2">' +
-            '<span class="font-display text-xs" style="color:' + sideColor + '">' + (t.side || '?') + '</span>' +
-            '<span class="ai-tag ' + convTag + '">' + (t.conviction || '?') + '</span>' +
-          '</div>' +
-        '</div>' +
-        '<div class="grid grid-cols-3 gap-2 text-center font-mono text-xs mb-2">' +
-          '<div><p class="text-dimText">Entry</p><p class="text-white">' + (t.entry_price ? '$' + t.entry_price.toLocaleString() : '—') + '</p></div>' +
-          '<div><p class="text-dimText">Stop</p><p class="text-danger">' + (t.stop_loss ? '$' + t.stop_loss.toLocaleString() : '—') + '</p></div>' +
-          '<div><p class="text-dimText">TP</p><p class="text-neon">' + (t.take_profit ? '$' + t.take_profit.toLocaleString() : '—') + '</p></div>' +
-        '</div>' +
-        '<div class="flex gap-2 mb-2">' +
-          '<span class="ai-tag ' + tagClass(t.whale_flow) + '">Whale: ' + (t.whale_flow || '?') + '</span>' +
-          '<span class="ai-tag ' + tagClass(t.sentiment_alignment) + '">Sentiment: ' + (t.sentiment_alignment || '?') + '</span>' +
-          (t.size_pct ? '<span class="font-mono text-xs text-dimText">Size: ' + t.size_pct + '%</span>' : '') +
-        '</div>' +
-        '<p class="font-mono text-xs text-dimText"><span class="text-cyan">\u25b8</span> ' + (t.catalyst || '') + '</p>' +
-        '<p class="font-mono text-xs text-white/60 mt-1">' + (t.rationale || '') + '</p>' +
-      '</div>';
-    }).join('');
+    async function runAgent(){
+      const button=document.getElementById('scan-btn');button.disabled=true;button.textContent='SCANNING…';
+      try{
+        const data=await api('/api/agent-events');
+        document.getElementById('agent-results').innerHTML=data.events.map((event)=>`
+          <article class="border-l-2 border-mint bg-mint/[.03] p-4"><div class="flex items-center justify-between gap-3"><p class="display font-semibold text-white">$${safe(event.asset)}</p><span class="badge">${safe(event.severity)}</span></div><p class="mt-2 text-xs leading-5 text-muted">${safe(event.description)}</p><p class="mt-3 text-[.62rem] tracking-wider text-lime">${safe(event.action)}</p></article>`).join('')||'<p class="text-sm text-muted">No significant rToken events detected.</p>';
+      }catch(error){document.getElementById('agent-results').innerHTML=`<p class="text-sm text-red">${safe(error.message)}</p>`;}
+      finally{button.disabled=false;button.textContent='RUN AGENT SCAN';}
+    }
 
-    showPanel('qt', 'result');
-  } catch (e) {
-    document.getElementById('qt-error-msg').textContent = 'Error: ' + e.message;
-    showPanel('qt', 'error');
-  }
-  setBtn('btn-trades', false);
-}
-</script>
+    async function generateTrades(){
+      const button=document.getElementById('trade-btn');button.disabled=true;button.textContent='GENERATING…';
+      try{
+        const data=await api('/api/trade-decisions');
+        document.getElementById('trade-body').innerHTML=data.decisions.map((trade)=>`
+          <tr><td class="text-muted">${new Date(trade.time||Date.now()).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</td><td class="font-semibold text-white">$${safe(trade.asset)}</td><td class="${trade.side==='LONG'?'text-mint':'text-red'}">${safe(trade.side)}</td><td>${Number(trade.size_pct||0).toFixed(1)}%</td><td>${money(trade.entry_price)}</td><td class="text-red">${money(trade.stop_loss)}</td><td class="text-lime">${money(trade.take_profit)}</td><td class="max-w-[300px] whitespace-normal text-muted">${safe(trade.rationale)}</td><td><span class="badge">PAPER</span></td></tr>`).join('')||'<tr><td colspan="9" class="py-8 text-center text-muted">No eligible rToken setup is available.</td></tr>';
+        document.getElementById('trade-engine').textContent=`Engine: ${data.engine} · Risk-validated · Paper trading only · No orders transmitted`;
+      }catch(error){document.getElementById('trade-body').innerHTML=`<tr><td colspan="9" class="py-8 text-center text-red">${safe(error.message)}</td></tr>`;}
+      finally{button.disabled=false;button.textContent='GENERATE PAPER TRADES';}
+    }
+
+    document.getElementById('scan-btn').addEventListener('click',runAgent);
+    document.getElementById('trade-btn').addEventListener('click',generateTrades);
+    window.addEventListener('scroll',()=>{const root=document.documentElement;document.getElementById('progress').style.width=`${root.scrollTop/(root.scrollHeight-root.clientHeight)*100}%`;});
+    renderPlaceholders();
+    Promise.allSettled([loadMarket(),loadFlow(),loadCorrelations(),loadSentiment(),generateTrades()]);
+    setInterval(()=>{loadMarket();loadFlow();loadSentiment();},30000);
+  </script>
 </body>
 </html>

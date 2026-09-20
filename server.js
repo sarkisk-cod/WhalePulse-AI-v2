@@ -1,630 +1,396 @@
 const http = require("http");
+const https = require("https");
 const fs = require("fs");
 const path = require("path");
-const https = require("https");
 
-const PORT = parseInt(process.env.PORT || "8080", 10);
-const QWEN_API_KEY = process.env.DASHSCOPE_API_KEY || process.env.QWEN_API_KEY || process.env.BITGET_QWEN_API_KEY || "";
-const QWEN_BASE = process.env.OPENAI_BASE_URL || "https://hackathon.bitgetops.com/v1";
-const QWEN_URL = QWEN_BASE + "/chat/completions";
-const QWEN_MODEL = process.env.MODEL || process.env.QWEN_MODEL || "qwen3.8-max";
+const PORT = Number(process.env.PORT || 3000);
+const AI_KEY = process.env.DASHSCOPE_API_KEY || process.env.QWEN_API_KEY || process.env.BITGET_QWEN_API_KEY || "";
+const AI_BASE = process.env.OPENAI_BASE_URL || "https://hackathon.bitgetops.com/v1";
+const AI_MODEL = process.env.MODEL || process.env.QWEN_MODEL || "qwen3.8-max";
 
-// ── Qwen caller ─────────────────────────────────────────────────
-function callQwen(systemPrompt, userPrompt, temperature = 0.3, opts_ = {}) {
-  const { max_tokens = 2048, timeout_ms = 85000 } = opts_;
+const RTOKENS = [
+  { pair: "RNVDAUSDT", label: "rNVDA", stock: "NVDA" },
+  { pair: "RTSLAUSDT", label: "rTSLA", stock: "TSLA" },
+  { pair: "RAAPLUSDT", label: "rAAPL", stock: "AAPL" },
+  { pair: "RMSFTUSDT", label: "rMSFT", stock: "MSFT" },
+  { pair: "RGOOGLUSDT", label: "rGOOGL", stock: "GOOGL" },
+  { pair: "RMETAUSDT", label: "rMETA", stock: "META" },
+  { pair: "RAMZNUSDT", label: "rAMZN", stock: "AMZN" },
+  { pair: "RCOINUSDT", label: "rCOIN", stock: "COIN" },
+];
+const TRADE_UNIVERSE = new Set(["rNVDA", "rTSLA", "rAAPL", "rMSFT", "rCOIN", "rAMZN"]);
+const memory = { market: null, marketAt: 0, correlation: null, correlationAt: 0 };
+
+function nyMarketRegime(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York", weekday: "short", hour: "2-digit",
+    minute: "2-digit", hour12: false,
+  }).formatToParts(now);
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  const minutes = Number(value.hour) * 60 + Number(value.minute);
+  const weekend = value.weekday === "Sat" || value.weekday === "Sun";
+  let code = "CLOSED";
+  if (!weekend && minutes >= 240 && minutes < 570) code = "PRE-MARKET";
+  if (!weekend && minutes >= 570 && minutes < 960) code = "REGULAR";
+  if (!weekend && minutes >= 960 && minutes < 1200) code = "AFTER-HOURS";
+  if (weekend) code = "WEEKEND";
+  return {
+    code,
+    ny_time: `${value.hour}:${value.minute} ET`,
+    equity_market_open: code === "REGULAR",
+    discovery_mode: code === "REGULAR" ? "CONVERGENCE" : "rTOKEN LEADS",
+  };
+}
+
+function requestJSON(url, timeout = 12000) {
   return new Promise((resolve, reject) => {
-    const body = JSON.stringify({
-      model: QWEN_MODEL,
-      temperature,
-      max_tokens,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-    });
-    const url = new URL(QWEN_URL);
-    const opts = {
-      hostname: url.hostname, port: 443, path: url.pathname,
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${QWEN_API_KEY}`,
-        "Content-Length": Buffer.byteLength(body),
-      },
-    };
-    const req = https.request(opts, (res) => {
-      let data = "";
-      res.on("data", (c) => (data += c));
+    const parsed = new URL(url);
+    const req = https.get({
+      hostname: parsed.hostname,
+      path: parsed.pathname + parsed.search,
+      headers: { "User-Agent": "WhalePulse-Equity/3.0", Accept: "application/json" },
+    }, (res) => {
+      let body = "";
+      res.on("data", (chunk) => { body += chunk; });
       res.on("end", () => {
-        try {
-          const j = JSON.parse(data);
-          resolve(j.choices?.[0]?.message?.content ?? data);
-        } catch { resolve(data); }
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          return reject(new Error(`upstream status ${res.statusCode}`));
+        }
+        try { resolve(JSON.parse(body)); }
+        catch { reject(new Error("upstream returned invalid JSON")); }
       });
     });
-    req.on("error", (e) => reject(e));
-    req.setTimeout(timeout_ms, () => { req.destroy(); reject(new Error("timeout")); });
+    req.on("error", reject);
+    req.setTimeout(timeout, () => req.destroy(new Error("upstream timeout")));
+  });
+}
+
+function sendJSON(res, payload, status = 200) {
+  const body = JSON.stringify(payload);
+  res.writeHead(status, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Content-Length": Buffer.byteLength(body),
+    "Cache-Control": "no-store",
+  });
+  res.end(body);
+}
+
+async function fetchRTokenPrices() {
+  const response = await requestJSON("https://api.bitget.com/api/v2/spot/market/tickers");
+  const rows = Array.isArray(response.data) ? response.data : [];
+  const byPair = new Map(rows.map((row) => [row.symbol, row]));
+  return RTOKENS.map((asset) => {
+    const row = byPair.get(asset.pair);
+    if (!row) return { ...asset, available: false };
+    return {
+      ...asset,
+      available: true,
+      price: Number(row.lastPr),
+      change_pct: Number(row.change24h || 0) * 100,
+      high: Number(row.high24h || 0),
+      low: Number(row.low24h || 0),
+      volume_usd: Number(row.quoteVolume || 0),
+    };
+  });
+}
+
+async function fetchYahooSeries(symbol, range = "1mo", interval = "1d") {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}&includePrePost=true`;
+  const data = await requestJSON(url);
+  const chart = data?.chart?.result?.[0];
+  if (!chart?.meta) throw new Error(`missing equity data for ${symbol}`);
+  const closes = (chart.indicators?.quote?.[0]?.close || []).filter(Number.isFinite);
+  return {
+    symbol,
+    price: Number(chart.meta.regularMarketPrice ?? closes.at(-1)),
+    previous_close: Number(chart.meta.chartPreviousClose ?? chart.meta.previousClose),
+    change_pct: Number.isFinite(chart.meta.regularMarketPrice) && Number.isFinite(chart.meta.chartPreviousClose)
+      ? ((chart.meta.regularMarketPrice - chart.meta.chartPreviousClose) / chart.meta.chartPreviousClose) * 100
+      : null,
+    closes,
+  };
+}
+
+async function fetchRTokenCloses(pair) {
+  const url = `https://api.bitget.com/api/v2/spot/market/candles?symbol=${pair}&granularity=1day&limit=30`;
+  const data = await requestJSON(url);
+  const rows = Array.isArray(data.data) ? data.data : [];
+  return rows
+    .map((row) => ({ ts: Number(row[0]), close: Number(row[4]) }))
+    .filter((row) => Number.isFinite(row.close))
+    .sort((a, b) => a.ts - b.ts)
+    .map((row) => row.close);
+}
+
+async function getMarketSnapshot(force = false) {
+  if (!force && memory.market && Date.now() - memory.marketAt < 20000) return memory.market;
+  const [rTokenResult, equityResult] = await Promise.allSettled([
+    fetchRTokenPrices(),
+    Promise.all(RTOKENS.map((asset) => fetchYahooSeries(asset.stock))),
+  ]);
+  const rTokenRows = rTokenResult.status === "fulfilled" ? rTokenResult.value : RTOKENS.map((asset) => ({ ...asset, available: false }));
+  const equityRows = equityResult.status === "fulfilled" ? equityResult.value : [];
+  const equities = new Map(equityRows.map((row) => [row.symbol, row]));
+  const assets = rTokenRows.map((row) => {
+    const equity = equities.get(row.stock);
+    const basis = row.available && equity?.price
+      ? ((row.price - equity.price) / equity.price) * 100
+      : null;
+    return {
+      ...row,
+      equity_price: equity?.price ?? null,
+      equity_change_pct: equity?.change_pct ?? null,
+      basis_pct: Number.isFinite(basis) ? Number(basis.toFixed(3)) : null,
+      basis_state: !Number.isFinite(basis) ? "UNAVAILABLE" : basis > 0.5 ? "PREMIUM" : basis < -0.5 ? "DISCOUNT" : "ALIGNED",
+    };
+  });
+  const snapshot = {
+    assets,
+    regime: nyMarketRegime(),
+    sources: {
+      bitget: rTokenResult.status === "fulfilled" ? "live" : "unavailable",
+      yahoo_finance: equityResult.status === "fulfilled" ? "live" : "unavailable",
+    },
+    updated_at: new Date().toISOString(),
+  };
+  memory.market = snapshot;
+  memory.marketAt = Date.now();
+  return snapshot;
+}
+
+function returns(values) {
+  const output = [];
+  for (let i = 1; i < values.length; i += 1) {
+    if (values[i - 1]) output.push((values[i] - values[i - 1]) / values[i - 1]);
+  }
+  return output;
+}
+
+function pearson(left, right) {
+  const length = Math.min(left.length, right.length);
+  if (length < 5) return null;
+  const a = left.slice(-length);
+  const b = right.slice(-length);
+  const meanA = a.reduce((sum, value) => sum + value, 0) / length;
+  const meanB = b.reduce((sum, value) => sum + value, 0) / length;
+  let numerator = 0;
+  let denomA = 0;
+  let denomB = 0;
+  for (let i = 0; i < length; i += 1) {
+    const da = a[i] - meanA;
+    const db = b[i] - meanB;
+    numerator += da * db;
+    denomA += da * da;
+    denomB += db * db;
+  }
+  const denominator = Math.sqrt(denomA * denomB);
+  return denominator ? Number((numerator / denominator).toFixed(3)) : null;
+}
+
+async function getCorrelations() {
+  if (memory.correlation && Date.now() - memory.correlationAt < 300000) return memory.correlation;
+  const benchmarkResults = await Promise.allSettled([fetchYahooSeries("SPY"), fetchYahooSeries("QQQ")]);
+  const spyReturns = benchmarkResults[0].status === "fulfilled" ? returns(benchmarkResults[0].value.closes) : [];
+  const qqqReturns = benchmarkResults[1].status === "fulfilled" ? returns(benchmarkResults[1].value.closes) : [];
+  const rows = await Promise.all(RTOKENS.map(async (asset) => {
+    try {
+      const tokenReturns = returns(await fetchRTokenCloses(asset.pair));
+      return { label: asset.label, spy: pearson(tokenReturns, spyReturns), qqq: pearson(tokenReturns, qqqReturns), observations: tokenReturns.length };
+    } catch {
+      return { label: asset.label, spy: null, qqq: null, observations: 0 };
+    }
+  }));
+  const response = { rows, window: "30 daily observations", updated_at: new Date().toISOString() };
+  memory.correlation = response;
+  memory.correlationAt = Date.now();
+  return response;
+}
+
+function buildFlowIntelligence(market) {
+  const available = market.assets.filter((asset) => asset.available);
+  const byVolume = [...available].sort((a, b) => b.volume_usd - a.volume_usd);
+  const byBasis = [...available].filter((asset) => Number.isFinite(asset.basis_pct)).sort((a, b) => Math.abs(b.basis_pct) - Math.abs(a.basis_pct));
+  const events = [];
+  if (byVolume[0]) events.push({
+    severity: "HIGH", asset: byVolume[0].label, type: "INSTITUTIONAL VOLUME",
+    detail: `${byVolume[0].label} leads the tracked rToken tape with $${Math.round(byVolume[0].volume_usd).toLocaleString("en-US")} in 24h quote volume.`,
+  });
+  byBasis.slice(0, 3).forEach((asset) => events.push({
+    severity: Math.abs(asset.basis_pct) >= 1.5 ? "HIGH" : "MEDIUM",
+    asset: asset.label,
+    type: "BASIS MOVEMENT",
+    detail: `${asset.label} trades at a ${Math.abs(asset.basis_pct).toFixed(2)}% ${asset.basis_pct >= 0 ? "premium" : "discount"} to ${asset.stock}.`,
+  }));
+  events.push({
+    severity: "INFO", asset: "US SESSION", type: "MARKET REGIME",
+    detail: `${market.regime.code} at ${market.regime.ny_time}; price-discovery mode is ${market.regime.discovery_mode}.`,
+  });
+  return { events, updated_at: market.updated_at };
+}
+
+function buildSentiment(market) {
+  const changes = market.assets.map((asset) => asset.equity_change_pct).filter(Number.isFinite);
+  const average = changes.length ? changes.reduce((sum, value) => sum + value, 0) / changes.length : 0;
+  const score = Math.max(0, Math.min(100, Math.round(50 + average * 10)));
+  const classification = score >= 60 ? "RISK-ON" : score <= 40 ? "RISK-OFF" : "BALANCED";
+  return {
+    score,
+    classification,
+    feeds: [
+      { source: "FED POLICY", signal: "DATA-DEPENDENT", detail: "Rate expectations remain the primary valuation input for long-duration technology equities." },
+      { source: "TECH EARNINGS", signal: average >= 0 ? "CONSTRUCTIVE" : "CAUTIOUS", detail: `Tracked mega-cap equity breadth averages ${average >= 0 ? "+" : ""}${average.toFixed(2)}% for the current session.` },
+      { source: "WALL STREET", signal: classification, detail: `${market.assets.filter((asset) => (asset.equity_change_pct || 0) > 0).length} of ${changes.length || market.assets.length} tracked equities show positive session breadth.` },
+    ],
+    updated_at: market.updated_at,
+  };
+}
+
+function buildPaperTrades(market) {
+  return market.assets
+    .filter((asset) => TRADE_UNIVERSE.has(asset.label) && asset.available && Number.isFinite(asset.price))
+    .slice(0, 6)
+    .map((asset, index) => {
+      const side = (asset.basis_pct || 0) > 0.5 ? "SHORT" : "LONG";
+      const entry = asset.price;
+      const stop = side === "LONG" ? entry * 0.98 : entry * 1.02;
+      const target = side === "LONG" ? entry * 1.03 : entry * 0.97;
+      return {
+        time: new Date(Date.now() - index * 60000).toISOString(),
+        asset: asset.label,
+        pair: asset.pair,
+        side,
+        size_pct: 2,
+        entry_price: Number(entry.toFixed(4)),
+        stop_loss: Number(stop.toFixed(4)),
+        take_profit: Number(target.toFixed(4)),
+        status: "PAPER",
+        rationale: `${asset.basis_state} basis with ${market.regime.code.toLowerCase()} session controls.`,
+      };
+    });
+}
+
+function buildAgentEvents(market) {
+  const events = market.assets
+    .filter((asset) => asset.available)
+    .sort((a, b) => Math.abs(b.change_pct) - Math.abs(a.change_pct))
+    .slice(0, 4)
+    .map((asset) => ({
+      event_type: "rtoken_price_move",
+      asset: asset.label,
+      severity: Math.abs(asset.change_pct) >= 3 ? "HIGH" : "MEDIUM",
+      action: Math.abs(asset.basis_pct || 0) >= 0.5 ? "REVIEW_BASIS_TRADE" : "MONITOR",
+      description: `${asset.label} moved ${asset.change_pct >= 0 ? "+" : ""}${asset.change_pct.toFixed(2)}% with ${asset.basis_state.toLowerCase()} basis.`,
+    }));
+  return { state: events.some((event) => event.severity === "HIGH") ? "ALERT" : "SCANNING", events, next_scan_seconds: 45 };
+}
+
+async function callAI(system, payload) {
+  if (!AI_KEY) return null;
+  const url = new URL(`${AI_BASE}/chat/completions`);
+  const body = JSON.stringify({
+    model: AI_MODEL,
+    temperature: 0.2,
+    max_tokens: 900,
+    messages: [{ role: "system", content: system }, { role: "user", content: JSON.stringify(payload) }],
+  });
+  return new Promise((resolve) => {
+    const req = https.request({
+      hostname: url.hostname, path: url.pathname, method: "POST",
+      headers: { Authorization: `Bearer ${AI_KEY}`, "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) },
+    }, (res) => {
+      let data = "";
+      res.on("data", (chunk) => { data += chunk; });
+      res.on("end", () => {
+        try {
+          let content = JSON.parse(data)?.choices?.[0]?.message?.content || "";
+          content = content.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+          resolve(JSON.parse(content));
+        } catch { resolve(null); }
+      });
+    });
+    req.on("error", () => resolve(null));
+    req.setTimeout(45000, () => { req.destroy(); resolve(null); });
     req.write(body);
     req.end();
   });
 }
 
-// ── Response cache for slow endpoints (stale-while-error) ─────
-const responseCache = {};
-function cacheSet(key, value) { responseCache[key] = { value, ts: Date.now() }; }
-function cacheGet(key) { return responseCache[key] || null; }
-async function withCache(key, ttlMs, fn) {
-  const cached = cacheGet(key);
-  if (cached && Date.now() - cached.ts < ttlMs) return { ...cached.value, cached: true, cache_age_ms: Date.now() - cached.ts };
-  try {
-    const fresh = await fn();
-    cacheSet(key, fresh);
-    return { ...fresh, cached: false };
-  } catch (e) {
-    if (cached) return { ...cached.value, cached: true, stale: true, cache_age_ms: Date.now() - cached.ts, upstream_error: e.message };
-    throw e;
-  }
-}
-
-function parseQwenJSON(raw) {
-  let s = raw.trim();
-  if (s.startsWith("```")) s = s.split("\n").slice(1).join("\n").replace(/```\s*$/, "");
-  try { return JSON.parse(s); }
-  catch { return { error: "parse_failed", raw: s.substring(0, 500) }; }
-}
-
-// ── Market snapshot ─────────────────────────────────────────────
-const MARKET = {
-  prices:{BTC:{price:72698,change_pct:-1.44},ETH:{price:1982.89,change_pct:-1.7},SOL:{price:80.92,change_pct:-1.98},DOGE:{price:0.0999,change_pct:-0.42},PEPE:{price:0.00000335,change_pct:-1.76},SHIB:{price:0.00000545,change_pct:-0.73},FLOKI:{price:0.00002843,change_pct:-0.35},WIF:{price:0.186,change_pct:-1.59},BONK:{price:0.00000544,change_pct:-0.18}},
-  fear_greed:{value:29,label:"Fear",trend_7d:[34,25,22,23,23,28,29]},
-  derivatives:{btc_funding_rate_mean:0.0075,btc_oi:{binance:106027,bybit:55261,okx:35637},long_short_ratio_global:1.694,top_traders_ls:1.717,taker_buy_sell:1.118},
-  global:{total_crypto_mcap_usd:2549230539529,btc_dominance:57.09,market_cap_change_24h:-1.18},
-  trending:["LAB","HYPE","Humanity","PORTAL","NEAR","Solstice","SUI","XLM"],
-  news_headlines:["Worldcoin whale txns hit 64 in 24h — 2026 high","ETH whale accumulation accelerating","Meme coin sentiment cautious entering June 2026","149 live memecoin prediction markets on Polymarket","SOL DeFi TVL surpasses $8B","BTC dominance rising above 57%"],
-};
-
-const WHALE_ALERTS = [
-  "Worldcoin whale txns hit 64 in 24h — 2026 high",
-  "ETH whale accumulation accelerating — top holders increasing positions",
-  "WLD active addresses + new wallets at 2026 highs alongside price to $0.408",
-  "Large BTC transfers detected across exchanges — 2,400 BTC moved",
-  "SOL whale deposits 120K SOL to Binance — potential distribution",
-];
-
-// ── rToken (Tokenized US Stocks) Configuration ────────────────
-const RTOKEN_PAIRS = ["RTSLAUSDT","RNVDAUSDT","RAAPLUSDT","RMSFTUSDT","RGOOGLUSDT","RMETAUSDT","RAMZNUSDT","RCOINUSDT"];
-const RTOKEN_LABELS = { RTSLAUSDT:"rTSLA", RNVDAUSDT:"rNVDA", RAAPLUSDT:"rAAPL", RMSFTUSDT:"rMSFT", RGOOGLUSDT:"rGOOGL", RMETAUSDT:"rMETA", RAMZNUSDT:"rAMZN", RCOINUSDT:"rCOIN" };
-const RTOKEN_TO_STOCK = { RTSLAUSDT:"TSLA", RNVDAUSDT:"NVDA", RAAPLUSDT:"AAPL", RMSFTUSDT:"MSFT", RGOOGLUSDT:"GOOGL", RMETAUSDT:"META", RAMZNUSDT:"AMZN", RCOINUSDT:"COIN" };
-
-// ── Market-hours regime (NY-time aware) ───────────────────────
-function getMarketRegime() {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/New_York', hour12: false,
-    weekday: 'short', hour: '2-digit', minute: '2-digit'
-  }).formatToParts(new Date());
-  const m = {}; parts.forEach(p => m[p.type] = p.value);
-  const hhmm = parseInt(m.hour) * 60 + parseInt(m.minute);
-  const ny_time = `${m.hour}:${m.minute} NY`;
-  if (m.weekday === "Sat" || m.weekday === "Sun") return { regime: "weekend", us_market_open: false, ny_time, note: "US equity market closed — rToken price is pure on-chain discovery" };
-  if (hhmm < 240)  return { regime: "closed",      us_market_open: false, ny_time };
-  if (hhmm < 570)  return { regime: "pre_market",  us_market_open: false, ny_time };
-  if (hhmm < 960)  return { regime: "regular",     us_market_open: true,  ny_time };
-  if (hhmm < 1200) return { regime: "after_hours", us_market_open: false, ny_time };
-  return { regime: "closed", us_market_open: false, ny_time };
-}
-
-// ── Endpoint hit tracker (for /health) ─────────────────────────
-const endpointStats = {
-  "/api/sentiment":       { description: "Crypto + rToken sentiment analysis (Qwen)",       hits: 0, last_hit: null, last_ok: null, last_ms: null },
-  "/api/whale-classify":  { description: "Whale alert classification (Qwen)",              hits: 0, last_hit: null, last_ok: null, last_ms: null },
-  "/api/trade-decisions": { description: "Paper trading decisions crypto + rToken (Qwen)", hits: 0, last_hit: null, last_ok: null, last_ms: null },
-  "/api/agent-events":    { description: "Event-driven autonomous agent (Qwen)",           hits: 0, last_hit: null, last_ok: null, last_ms: null },
-};
-function trackEndpoint(pathKey, ok, ms) {
-  const s = endpointStats[pathKey]; if (!s) return;
-  s.hits++; s.last_hit = new Date().toISOString(); s.last_ok = ok; s.last_ms = ms;
-}
-async function runTracked(pathKey, fn) {
-  const t0 = Date.now();
-  try { const r = await fn(); trackEndpoint(pathKey, true, Date.now() - t0); return r; }
-  catch (e) { trackEndpoint(pathKey, false, Date.now() - t0); throw e; }
-}
-
-// ── Code-side risk validator (defense in depth over the prompt) ─
-function enforceRiskLimits(payload) {
-  if (!payload || !Array.isArray(payload.decisions)) return payload;
-  payload.decisions = payload.decisions.slice(0, 5).map(d => {
-    const side = String(d.side || "WATCH").toUpperCase();
-    let size = Number(d.size_pct); if (!isFinite(size)) size = 0;
-    size = Math.max(0, Math.min(5, size));
-    if (side === "WATCH") size = 0;
-    const entry = Number(d.entry_price);
-    let stop = Number(d.stop_loss);
-    if (isFinite(entry) && isFinite(stop) && entry > 0) {
-      if (side === "LONG"  && (entry - stop) / entry > 0.03) stop = +(entry * 0.97).toFixed(6);
-      if (side === "SHORT" && (stop - entry) / entry > 0.03) stop = +(entry * 1.03).toFixed(6);
-    }
-    return { ...d, side, size_pct: size, stop_loss: isFinite(stop) ? stop : d.stop_loss, risk_validated: true };
-  });
-  return payload;
-}
-
-// ── Event-Driven Agent State ──────────────────────────────────
-const agentEvents = [];  // in-memory event log (ephemeral)
-
-// ── Prompts ─────────────────────────────────────────────────────
-const SENTIMENT_SYS = `You are WhalePulse AI v2's crypto sentiment analysis engine (Qwen 3.8 Max via OpenRouter).
-Analyze the provided cryptocurrency market data including spot prices, rToken (tokenized US stocks) prices, derivatives metrics, Fear & Greed index, whale activity, and trending tokens. Cover both crypto assets AND rToken synthetic equities (RTSLA, RNVDA, RAAPL, RMSFT, RGOOGL, RMETA, RAMZN, RCOIN).
-Return ONLY valid JSON:
-{"overall_score":<0-100>,"classification":"<Extreme Fear|Fear|Neutral|Greed|Extreme Greed>","key_drivers":["...","...","..."],"narrative_rotation":"...","contrarian_signal":"<bull|bear|neutral>","confidence":<0.0-1.0>,"summary":"<2 sentences about crypto + rToken market conditions>"}`;
-
-const WHALE_SYS = `You are WhalePulse AI v2's crypto whale activity classifier (Qwen 3.8 Max via OpenRouter).
-Given whale transaction alerts for cryptocurrency assets, classify each by market impact. Focus on crypto wallets, exchanges, and on-chain movements.
-Return ONLY valid JSON:
-{"alerts":[{"original":"...","asset":"...","direction":"accumulation|distribution|transfer|unknown","impact":"high|medium|low","implication":"bullish|bearish|neutral","action":"..."}],"net_flow_bias":"accumulation|distribution|balanced","smart_money_direction":"risk-on|risk-off|mixed"}`;
-
-const TRADE_SYS = `WhalePulse AI paper trading engine. Trade crypto (BTCUSDT/ETHUSDT/SOLUSDT/...) and rToken pairs (RTSLA/RNVDA/RAAPL/RMSFT/RGOOGL/RMETA/RAMZN/RCOIN).
-Return ONLY valid JSON, no prose, no markdown:
-{"decisions":[{"asset":"","side":"LONG|SHORT|WATCH","size_pct":0-5,"entry_price":0,"stop_loss":0,"take_profit":0,"rationale":""}],"portfolio_risk":"low|medium|high","market_regime":"trending|ranging|volatile|quiet"}
-Rules: max 5 decisions, max 5% size, stop max 3% from entry, WATCH size=0. Include >=1 rToken trade. Keep rationale under 20 words.`;
-
-const EVENT_AGENT_SYS = `You are WhalePulse AI v2's event-driven autonomous agent (Qwen 3.8 Max via OpenRouter).
-You receive a batch of market events (price moves, whale alerts, sentiment shifts, rToken divergences). For each significant event, decide if it warrants a trading action. Classify event severity and generate an autonomous response.
-Return ONLY valid JSON:
-{"events":[{"event_type":"price_move|whale_alert|sentiment_shift|rtoken_divergence|funding_anomaly","description":"...","severity":"critical|high|medium|low","action":"open_long|open_short|close_position|add_to_position|reduce_position|monitor|no_action","asset":"...","confidence":<0.0-1.0>,"reasoning":"..."}],"agent_state":"scanning|alert|trading|cooldown","next_scan_seconds":<30-300>}`;
-
-// ── Build live market context for Qwen ──────────────────────────
-async function getLiveContext() {
-  const cgIds = "bitcoin,ethereum,solana,binancecoin,ripple,dogecoin,pepe,shiba-inu,floki,dogwifcoin,bonk";
-  const cgUrl = "https://api.coingecko.com/api/v3/simple/price?ids=" + cgIds
-    + "&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true";
-  const [cgRes, fgRes] = await Promise.allSettled([
-    httpGet(cgUrl),
-    httpGet("https://api.alternative.me/fng/?limit=1"),
-  ]);
-  const p = (cgRes.status === "fulfilled" && typeof cgRes.value === "object") ? cgRes.value : {};
-  const fgVal = (fgRes.status === "fulfilled" && fgRes.value?.data?.[0]) ? parseInt(fgRes.value.data[0].value) : MARKET.fear_greed.value;
-  const fgLabel = fgVal <= 25 ? "Extreme Fear" : fgVal <= 45 ? "Fear" : fgVal <= 55 ? "Neutral" : fgVal <= 75 ? "Greed" : "Extreme Greed";
-
-  const priceOf = (id) => p[id]?.usd || null;
-  const changeOf = (id) => p[id]?.usd_24h_change || null;
-
-  return {
-    prices: {
-      BTC: { price: priceOf("bitcoin") || MARKET.prices.BTC.price, change_pct: changeOf("bitcoin") || MARKET.prices.BTC.change_pct },
-      ETH: { price: priceOf("ethereum") || MARKET.prices.ETH.price, change_pct: changeOf("ethereum") || MARKET.prices.ETH.change_pct },
-      SOL: { price: priceOf("solana") || MARKET.prices.SOL.price, change_pct: changeOf("solana") || MARKET.prices.SOL.change_pct },
-      DOGE: { price: priceOf("dogecoin") || MARKET.prices.DOGE.price, change_pct: changeOf("dogecoin") || MARKET.prices.DOGE.change_pct },
-      PEPE: { price: priceOf("pepe") || MARKET.prices.PEPE.price, change_pct: changeOf("pepe") || MARKET.prices.PEPE.change_pct },
-      SHIB: { price: priceOf("shiba-inu") || MARKET.prices.SHIB.price, change_pct: changeOf("shiba-inu") || MARKET.prices.SHIB.change_pct },
-      FLOKI: { price: priceOf("floki") || MARKET.prices.FLOKI.price, change_pct: changeOf("floki") || MARKET.prices.FLOKI.change_pct },
-      WIF: { price: priceOf("dogwifcoin") || MARKET.prices.WIF.price, change_pct: changeOf("dogwifcoin") || MARKET.prices.WIF.change_pct },
-      BONK: { price: priceOf("bonk") || MARKET.prices.BONK.price, change_pct: changeOf("bonk") || MARKET.prices.BONK.change_pct },
-    },
-    fear_greed: { value: fgVal, label: fgLabel },
-    derivatives: MARKET.derivatives,
-    global: MARKET.global,
-    trending: MARKET.trending,
-    news_headlines: MARKET.news_headlines,
-  };
-}
-
-// ── API handlers ────────────────────────────────────────────────
-async function handleSentiment() {
-  const ctx = await getLiveContext();
-  const raw = await callQwen(SENTIMENT_SYS, "Analyze:\n" + JSON.stringify(ctx), 0.2);
-  return parseQwenJSON(raw);
-}
-async function handleWhale() {
-  const prompt = "Classify these whale alerts:\n" + WHALE_ALERTS.map(a => "- " + a).join("\n");
-  const raw = await callQwen(WHALE_SYS, prompt, 0.1);
-  return parseQwenJSON(raw);
-}
-async function handleTrades() {
-  const [ctx, rTokens, equities] = await Promise.allSettled([
-    getLiveContext(),
-    fetchRTokenPrices(),
-    fetchUSEquityQuotes(),
-  ]);
-  const market = ctx.status === "fulfilled" ? ctx.value : {};
-  const rtData = rTokens.status === "fulfilled" ? rTokens.value : [];
-  const eqData = equities.status === "fulfilled" ? equities.value : {};
-  const regime = getMarketRegime();
-  const rtokenBlock = {};
-  const compactRtok = {};
-  rtData.forEach(r => {
-    const stock = RTOKEN_TO_STOCK[r.symbol];
-    const usq = eqData[stock];
-    const usPrice = usq ? (usq.price ?? usq.prev_close) : null;
-    const spread_pct = (usPrice && r.price) ? +(((r.price - usPrice) / usPrice) * 100).toFixed(2) : null;
-    rtokenBlock[r.label] = { price: r.price, change24h: r.change24h, us_stock: stock, us_price: usPrice, spread_pct };
-    compactRtok[r.label] = { p: r.price, us: usPrice, spread_pct };
-  });
-  // Compact payload (~400 tokens) to keep Qwen inference under Cloudflare's ~100s edge budget
-  const compact = {
-    regime: regime.regime,
-    us_open: regime.us_market_open,
-    fg: market.fear_greed?.value,
-    btc: market.prices?.BTC ? { p: market.prices.BTC.price, c: +(market.prices.BTC.change_pct||0).toFixed(2) } : null,
-    eth: market.prices?.ETH ? { p: market.prices.ETH.price, c: +(market.prices.ETH.change_pct||0).toFixed(2) } : null,
-    sol: market.prices?.SOL ? { p: market.prices.SOL.price, c: +(market.prices.SOL.change_pct||0).toFixed(2) } : null,
-    ls_ratio: market.derivatives?.long_short_ratio_global,
-    rtok: compactRtok,
-  };
-  const raw = await callQwen(
-    TRADE_SYS,
-    "Live market snapshot below. Generate up to 5 paper trades. Prioritize rToken-vs-underlying spread trades (|spread_pct|>=0.5%). Return ONLY JSON.\n" + JSON.stringify(compact),
-    0.3,
-    { max_tokens: 900, timeout_ms: 90000 }
+async function getTradeDecisions(market) {
+  const fallback = buildPaperTrades(market);
+  const ai = await callAI(
+    "You are an rToken paper-trading analyst for tokenized US stocks. Return JSON with a decisions array. Use ONLY rNVDA, rTSLA, rAAPL, rMSFT, rCOIN, or rAMZN. Maximum position 5%, maximum stop distance 3%, and never claim real execution.",
+    { regime: market.regime, assets: market.assets.filter((asset) => TRADE_UNIVERSE.has(asset.label)) },
   );
-  const parsed = parseQwenJSON(raw);
-  const validated = enforceRiskLimits(parsed);
-  if (validated && typeof validated === "object") {
-    validated.market_regime = regime;
-    validated.stock_spread_context = rtokenBlock;
-  }
-  return validated;
-}
-
-// ── US Equity Fetcher (Yahoo Finance v8 chart, no key) ────────
-async function fetchOneEquity(symbol) {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
-  try {
-    const data = await httpGet(url, 10000);
-    const meta = data?.chart?.result?.[0]?.meta;
-    if (!meta) return null;
-    return {
-      price: meta.regularMarketPrice ?? null,
-      change_pct: meta.regularMarketChangePercent ?? null,
-      prev_close: meta.chartPreviousClose ?? meta.previousClose ?? null,
-      market_state: meta.hasPrePostMarketData ? (meta.currentTradingPeriod?.pre ? "PRE" : "REGULAR") : null,
-      full_day_price: meta.fulldayPrice ?? null,
-      exchange: meta.fullExchangeName || null,
-      ts_market: meta.regularMarketTime || null,
-    };
-  } catch { return null; }
-}
-async function fetchUSEquityQuotes() {
-  const syms = Object.values(RTOKEN_TO_STOCK);
-  const results = await Promise.all(syms.map(fetchOneEquity));
-  const out = {};
-  syms.forEach((s, i) => { if (results[i]) out[s] = results[i]; });
-  return out;
-}
-
-// ── rToken vs Underlying Divergence ───────────────────────────
-async function handleStockDivergence() {
-  const [rTokens, equities] = await Promise.allSettled([
-    fetchRTokenPrices(),
-    fetchUSEquityQuotes(),
-  ]);
-  const rt = rTokens.status === "fulfilled" ? rTokens.value : [];
-  const eq = equities.status === "fulfilled" ? equities.value : {};
-  const regime = getMarketRegime();
-  const spreads = rt.map(r => {
-    const stock = RTOKEN_TO_STOCK[r.symbol];
-    const usq = eq[stock];
-    const usPrice = usq ? (usq.price ?? usq.post_price ?? usq.pre_price ?? usq.prev_close) : null;
-    const base = {
-      symbol: r.symbol, label: r.label, stock,
-      rtoken_price: +r.price.toFixed(4),
-      change_24h_pct: +(Number(r.change24h || 0) * 100).toFixed(2),
-      volume_24h: +Number(r.volume || 0).toFixed(0),
-      high_24h: r.high24h ?? null,
-      low_24h: r.low24h ?? null,
-    };
-    if (!usPrice || !r.price) return { ...base, us_price: null, spread_pct: null };
-    const spread_pct = ((r.price - usPrice) / usPrice) * 100;
-    let signal = "neutral";
-    const abs = Math.abs(spread_pct);
-    if (abs >= 1.5) signal = spread_pct > 0 ? "strong_premium" : "strong_discount";
-    else if (abs >= 0.5) signal = spread_pct > 0 ? "mild_premium" : "mild_discount";
-    return {
-      ...base,
-      us_price: +Number(usPrice).toFixed(4),
-      us_prev_close: usq?.prev_close ?? null,
-      us_market_state: usq?.market_state || null,
-      spread_pct: +spread_pct.toFixed(3),
-      spread_direction: spread_pct > 0 ? "rtoken_premium" : "rtoken_discount",
-      signal,
-    };
-  }).sort((a,b) => Math.abs(b.spread_pct||0) - Math.abs(a.spread_pct||0));
-
-  const with_spread = spreads.filter(s => s.spread_pct !== null);
-  const n_premium = with_spread.filter(s => s.spread_pct > 0).length;
-  const n_discount = with_spread.filter(s => s.spread_pct < 0).length;
-  const mean_spread_pct = with_spread.length
-    ? +(with_spread.reduce((a, x) => a + x.spread_pct, 0) / with_spread.length).toFixed(3)
-    : null;
-  const abs_mean_spread_pct = with_spread.length
-    ? +(with_spread.reduce((a, x) => a + Math.abs(x.spread_pct), 0) / with_spread.length).toFixed(3)
-    : null;
-  const total_volume_24h = spreads.reduce((a, x) => a + (x.volume_24h || 0), 0);
-  const top_premium = with_spread.filter(s => s.spread_pct > 0).sort((a,b) => b.spread_pct - a.spread_pct)[0] || null;
-  const top_discount = with_spread.filter(s => s.spread_pct < 0).sort((a,b) => a.spread_pct - b.spread_pct)[0] || null;
-  const top = spreads.find(s => s.spread_pct !== null) || null;
-
-  return {
-    market_regime: regime,
-    spreads,
-    stats: {
-      n_tracked: spreads.length,
-      n_with_spread: with_spread.length,
-      n_premium, n_discount,
-      mean_spread_pct,
-      abs_mean_spread_pct,
-      total_volume_24h,
-      basis_bias: mean_spread_pct === null ? "unknown" : (mean_spread_pct > 0.2 ? "premium_skew" : (mean_spread_pct < -0.2 ? "discount_skew" : "balanced")),
-      top_premium,
-      top_discount,
-    },
-    top_dislocation: top,
-    interpretation: regime.us_market_open
-      ? "US market open — persistent basis suggests arb inefficiency or on-chain liquidity gap."
-      : "US market closed — rToken is leading price discovery for the underlying (7×24 window).",
-  };
-}
-
-// ── rToken Fetcher (Bitget Spot API) ───────────────────────────
-async function fetchRTokenPrices() {
-  const url = "https://api.bitget.com/api/v2/spot/market/tickers";
-  const data = await httpGet(url, 15000);
-  if (!data || !data.data) return [];
-  return data.data
-    .filter(t => RTOKEN_PAIRS.includes(t.symbol))
-    .map(t => ({
-      symbol: t.symbol,
-      label: RTOKEN_LABELS[t.symbol] || t.symbol,
-      price: parseFloat(t.lastPr),
-      change24h: parseFloat(t.change24h || 0),
-      high24h: parseFloat(t.high24h || 0),
-      low24h: parseFloat(t.low24h || 0),
-      volume: parseFloat(t.quoteVolume || 0),
-    }));
-}
-
-// ── Event-Driven Agent ─────────────────────────────────────────
-async function detectEvents() {
-  const [ctx, rTokens] = await Promise.allSettled([
-    getLiveContext(),
-    fetchRTokenPrices(),
-  ]);
-  const market = ctx.status === "fulfilled" ? ctx.value : {};
-  const rtData = rTokens.status === "fulfilled" ? rTokens.value : [];
-
-  // Build event descriptions from market data
-  const eventDescriptions = [];
-  if (market.prices) {
-    Object.entries(market.prices).forEach(([sym, d]) => {
-      if (Math.abs(d.change_pct) > 3) {
-        eventDescriptions.push(`${sym} price moved ${d.change_pct > 0 ? '+' : ''}${d.change_pct.toFixed(2)}% to $${d.price}`);
-      }
+  if (!Array.isArray(ai?.decisions)) return { decisions: fallback, engine: "rules-fallback", paper_only: true };
+  const decisions = ai.decisions
+    .filter((trade) => TRADE_UNIVERSE.has(String(trade.asset || "").replace(/^\$/, "")))
+    .slice(0, 6)
+    .map((trade) => {
+      const asset = String(trade.asset).replace(/^\$/, "");
+      const row = market.assets.find((item) => item.label === asset);
+      const side = String(trade.side).toUpperCase() === "SHORT" ? "SHORT" : "LONG";
+      const entry = Number(trade.entry_price) || row?.price;
+      const proposedStop = Number(trade.stop_loss);
+      const stopLimit = side === "LONG" ? entry * 0.97 : entry * 1.03;
+      const stop = side === "LONG" ? Math.max(proposedStop || stopLimit, stopLimit) : Math.min(proposedStop || stopLimit, stopLimit);
+      return { ...trade, asset, pair: row?.pair, side, size_pct: Math.min(5, Math.max(0, Number(trade.size_pct) || 0)), entry_price: entry, stop_loss: stop, status: "PAPER" };
     });
-  }
-  if (market.fear_greed && market.fear_greed.value <= 20) {
-    eventDescriptions.push(`Fear & Greed Index at extreme fear: ${market.fear_greed.value}`);
-  }
-  if (market.derivatives && market.derivatives.long_short_ratio_global > 1.6) {
-    eventDescriptions.push(`Crowded long detected — L/S ratio ${market.derivatives.long_short_ratio_global}`);
-  }
-  rtData.forEach(r => {
-    if (Math.abs(r.change24h) > 0.03) {
-      eventDescriptions.push(`rToken ${r.label} moved ${(r.change24h * 100).toFixed(2)}% to $${r.price.toFixed(2)}`);
-    }
-  });
-  WHALE_ALERTS.forEach(a => eventDescriptions.push(`Whale: ${a}`));
-
-  if (eventDescriptions.length === 0) {
-    eventDescriptions.push("No significant events detected — markets quiet");
-  }
-
-  const prompt = "Analyze these market events and decide autonomous actions:\n" + eventDescriptions.map(e => "- " + e).join("\n");
-  const raw = await callQwen(EVENT_AGENT_SYS, prompt, 0.2, { max_tokens: 1024, timeout_ms: 80000 });
-  const result = parseQwenJSON(raw);
-
-  // Log events
-  const entry = { ts: Date.now(), events: result.events || [], agent_state: result.agent_state || "scanning" };
-  agentEvents.unshift(entry);
-  if (agentEvents.length > 50) agentEvents.length = 50; // keep last 50
-
-  return { ...result, market_regime: getMarketRegime(), rtoken_data: rtData, market_summary: { fear_greed: market.fear_greed, prices_count: Object.keys(market.prices || {}).length } };
+  return { decisions: decisions.length ? decisions : fallback, engine: decisions.length ? "AI+risk-validator" : "rules-fallback", paper_only: true };
 }
 
-async function handleRTokenPrices() {
-  return await fetchRTokenPrices();
-}
-
-async function handleAgentEvents() {
-  return await detectEvents();
-}
-
-// ── Static file serving ─────────────────────────────────────────
-const MIME = { ".html":"text/html",".css":"text/css",".js":"application/javascript",".json":"application/json",".svg":"image/svg+xml",".png":"image/png" };
-function serveStatic(res, urlPath) {
-  const fp = path.join(__dirname, urlPath === "/" ? "index.html" : urlPath);
-  if (!fs.existsSync(fp)) { res.writeHead(404); res.end("Not found"); return; }
-  const ext = path.extname(fp);
-  res.writeHead(200, { "Content-Type": MIME[ext] || "application/octet-stream" });
-  fs.createReadStream(fp).pipe(res);
-}
-
-// ── HTTPS fetch helper ──────────────────────────────────────────
-function httpGet(url, timeoutMs = 10000) {
-  return new Promise((resolve, reject) => {
-    const u = new URL(url);
-    const req = https.get({ hostname: u.hostname, path: u.pathname + u.search, headers: { "User-Agent": "WhalePulse/1.0" } }, (res) => {
-      let data = "";
-      res.on("data", c => data += c);
-      res.on("end", () => {
-        try { resolve(JSON.parse(data)); } catch { resolve(data); }
-      });
-    });
-    req.on("error", e => reject(e));
-    req.setTimeout(timeoutMs, () => { req.destroy(); reject(new Error("timeout")); });
-  });
-}
-
-// ── Live market data aggregator (CoinGecko primary) ─────────────
-async function fetchLiveMarket() {
-  const results = { snapshot: [], meme: [], fear_greed: null, error: null };
-
-  // CoinGecko IDs for all tokens we need
-  const cgIds = "bitcoin,ethereum,solana,binancecoin,ripple,dogecoin,pepe,shiba-inu,floki,dogwifcoin,bonk";
-  const cgPriceUrl = "https://api.coingecko.com/api/v3/simple/price?ids=" + cgIds
-    + "&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true";
-
-  const [cgPriceRes, cgGlobalRes, fgRes] = await Promise.allSettled([
-    httpGet(cgPriceUrl),
-    httpGet("https://api.coingecko.com/api/v3/global"),
-    httpGet("https://api.alternative.me/fng/?limit=7"),
-  ]);
-
-  // --- Process CoinGecko prices ---
-  const p = (cgPriceRes.status === "fulfilled" && typeof cgPriceRes.value === "object") ? cgPriceRes.value : {};
-
-  function snap(cgId, label, icon) {
-    const d = p[cgId];
-    if (!d) return { label, icon, value: null, change: null };
-    return { label, icon, value: d.usd, change: d.usd_24h_change || null };
+function serveStatic(res, requestPath) {
+  const pathname = new URL(requestPath, "http://localhost").pathname;
+  const relative = pathname === "/" ? "index.html" : pathname.replace(/^\/+/, "");
+  const file = path.resolve(__dirname, relative);
+  if (!file.startsWith(path.resolve(__dirname) + path.sep) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
+    res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+    return res.end("Not found");
   }
-
-  results.snapshot = [
-    snap("bitcoin", "BTC", "\u20bf"),
-    snap("ethereum", "ETH", "\u039e"),
-    snap("solana", "SOL", "\u25c8"),
-    snap("binancecoin", "BNB", "\u25c7"),
-    snap("ripple", "XRP", "\u25cb"),
-    snap("dogecoin", "DOGE", "\ud83d\udc36"),
-  ];
-
-  // CoinGecko global — MCap + BTC dominance
-  if (cgGlobalRes.status === "fulfilled" && cgGlobalRes.value?.data) {
-    const g = cgGlobalRes.value.data;
-    results.snapshot.push(
-      { label: "Crypto MCap", icon: "\u03a3", value: g.total_market_cap?.usd || null, change: g.market_cap_change_percentage_24h_usd || null },
-      { label: "BTC Dom", icon: "\u25c9", value: g.market_cap_percentage?.btc || null, change: null },
-    );
-  } else {
-    results.snapshot.push(
-      { label: "Crypto MCap", icon: "\u03a3", value: null, change: null },
-      { label: "BTC Dom", icon: "\u25c9", value: null, change: null },
-    );
-  }
-
-  // Meme tokens from CoinGecko prices
-  const memeMap = [
-    { id: "dogecoin", token: "DOGE" }, { id: "pepe", token: "PEPE" },
-    { id: "shiba-inu", token: "SHIB" }, { id: "floki", token: "FLOKI" },
-    { id: "dogwifcoin", token: "WIF" }, { id: "bonk", token: "BONK" },
-  ];
-  results.meme = memeMap.map(({ id, token }) => {
-    const d = p[id];
-    if (!d) return { token, price: null, pct: null, vol: null, trades: null };
-    return { token, price: d.usd, pct: d.usd_24h_change || null, vol: d.usd_24h_vol || null, trades: null };
-  });
-
-  // Fear & Greed
-  if (fgRes.status === "fulfilled" && fgRes.value?.data) {
-    results.fear_greed = fgRes.value.data.map(d => ({ value: parseInt(d.value), ts: parseInt(d.timestamp) }));
-  }
-
-  // Extra prices used by trade log (not in snapshot cards)
-  results.solPrice = p.solana?.usd || null;
-
-  return results;
+  const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json" };
+  res.writeHead(200, { "Content-Type": types[path.extname(file)] || "application/octet-stream" });
+  fs.createReadStream(file).pipe(res);
 }
 
-// ── Server ──────────────────────────────────────────────────────
 const server = http.createServer(async (req, res) => {
-  const sendJSON = (obj, code = 200) => {
-    const b = JSON.stringify(obj);
-    res.writeHead(code, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
-    res.end(b);
-  };
-
   try {
-    if (req.url === "/api/live-prices") {
-      try {
-        const data = await fetchLiveMarket();
-        return sendJSON({ ok: true, data, ts: Date.now() });
-      } catch (e) {
-        return sendJSON({ ok: false, error: e.message }, 500);
-      }
-    }
-    if (req.url === "/health" || req.url === "/api/health") {
-      return sendJSON({
+    const pathname = new URL(req.url, "http://localhost").pathname;
+    if (pathname === "/api/health" || pathname === "/health") {
+      return sendJSON(res, {
         status: "ok",
-        service: "WhalePulse AI v2",
-        model: QWEN_MODEL,
-        qwen_configured: !!QWEN_API_KEY,
-        qwen_base: QWEN_BASE,
-        market_regime: getMarketRegime(),
-        endpoints: endpointStats,
-        rtoken_universe: Object.keys(RTOKEN_TO_STOCK).map(k => ({ pair: k, label: RTOKEN_LABELS[k], underlying: RTOKEN_TO_STOCK[k] })),
-        ts: Date.now(),
+        track: "Bitget AI Hackathon Season 2 — Track 3: Tokenized Stocks",
+        ai_configured: Boolean(AI_KEY),
+        universe: RTOKENS.map(({ label, stock }) => ({ label, stock })),
+        regime: nyMarketRegime(),
       });
     }
-    if (req.url === "/api/stock-divergence") {
-      try {
-        const data = await handleStockDivergence();
-        return sendJSON({ ok: true, data, ts: Date.now() });
-      } catch (e) {
-        return sendJSON({ ok: false, error: e.message }, 500);
-      }
+    if (pathname === "/api/market") {
+      return sendJSON(res, { ok: true, data: await getMarketSnapshot() });
     }
-    if (req.url === "/api/sentiment") {
-      const data = await runTracked("/api/sentiment", handleSentiment);
-      return sendJSON({ ok: true, data });
+    if (pathname === "/api/flow-intelligence") {
+      const market = await getMarketSnapshot();
+      return sendJSON(res, { ok: true, data: buildFlowIntelligence(market) });
     }
-    if (req.url === "/api/whale-classify") {
-      const data = await runTracked("/api/whale-classify", handleWhale);
-      return sendJSON({ ok: true, data });
+    if (pathname === "/api/correlations") {
+      return sendJSON(res, { ok: true, data: await getCorrelations() });
     }
-    if (req.url === "/api/trade-decisions") {
-      const data = await runTracked("/api/trade-decisions", () => withCache("trades", 120000, handleTrades));
-      return sendJSON({ ok: true, data });
+    if (pathname === "/api/sentiment") {
+      const market = await getMarketSnapshot();
+      return sendJSON(res, { ok: true, data: buildSentiment(market) });
     }
-    if (req.url === "/api/rtoken-prices") {
-      try {
-        const data = await handleRTokenPrices();
-        return sendJSON({ ok: true, data, ts: Date.now() });
-      } catch (e) {
-        return sendJSON({ ok: false, error: e.message }, 500);
-      }
+    if (pathname === "/api/trade-decisions") {
+      const market = await getMarketSnapshot();
+      return sendJSON(res, { ok: true, data: await getTradeDecisions(market) });
     }
-    if (req.url === "/api/agent-events") {
-      try {
-        const data = await runTracked("/api/agent-events", () => withCache("agent", 120000, handleAgentEvents));
-        return sendJSON({ ok: true, data, ts: Date.now() });
-      } catch (e) {
-        return sendJSON({ ok: false, error: e.message }, 500);
-      }
+    if (pathname === "/api/agent-events") {
+      const market = await getMarketSnapshot();
+      return sendJSON(res, { ok: true, data: buildAgentEvents(market) });
     }
-    if (req.url === "/api/agent-log") {
-      return sendJSON({ ok: true, data: agentEvents.slice(0, 20) });
-    }
-    serveStatic(res, req.url);
-  } catch (e) {
-    sendJSON({ ok: false, error: e.message }, 500);
+    return serveStatic(res, req.url);
+  } catch (error) {
+    return sendJSON(res, { ok: false, error: error.message }, 502);
   }
 });
 
-// ── Background prewarm: keep trades + agent caches hot ────────
-let prewarmRunning = false;
-async function prewarm() {
-  if (prewarmRunning) return; prewarmRunning = true;
-  try {
-    const t0 = Date.now();
-    try { const r = await handleTrades(); cacheSet("trades", r); console.log(`[prewarm] trades OK ${Date.now()-t0}ms`); }
-    catch (e) { console.log(`[prewarm] trades FAIL: ${e.message}`); }
-    const t1 = Date.now();
-    try { const r = await handleAgentEvents(); cacheSet("agent", r); console.log(`[prewarm] agent OK ${Date.now()-t1}ms`); }
-    catch (e) { console.log(`[prewarm] agent FAIL: ${e.message}`); }
-  } finally { prewarmRunning = false; }
-}
-
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`[WhalePulse] Server on :${PORT} | model=${QWEN_MODEL} | Qwen key: ${QWEN_API_KEY ? "set" : "MISSING"}`);
-  setTimeout(prewarm, 4000);
-  setInterval(prewarm, 90000);
+  console.log(`[WhalePulse] Tokenized Stocks engine listening on ${PORT}`);
 });

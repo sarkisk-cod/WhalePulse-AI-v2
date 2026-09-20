@@ -1,5 +1,9 @@
 {
   "name": "whalepulse-ai",
-  "version": "0.2.0",
-  "private": true
+  "version": "0.3.0",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js"
+  }
 }
