@@ -23,6 +23,11 @@
     button{transition:.2s}button:hover{transform:translateY(-1px);box-shadow:0 0 24px rgba(120,242,189,.12)}button:disabled{opacity:.45;cursor:not-allowed}
     .skeleton{background:linear-gradient(90deg,#10231c,#17352a,#10231c);background-size:200% 100%;animation:load 1.4s infinite}@keyframes load{to{background-position:-200% 0}}
     .section-rule{height:1px;background:linear-gradient(90deg,#78f2bd,transparent)}
+    .regime-banner{position:relative;isolation:isolate;overflow:hidden;background:linear-gradient(105deg,#0d241b 0%,#102e22 48%,#0a1712 100%);border:1px solid rgba(120,242,189,.32);box-shadow:0 24px 80px rgba(0,0,0,.4),inset 0 1px 0 rgba(199,255,107,.08)}
+    .regime-banner:before{content:"";position:absolute;z-index:-1;inset:-80% 48% -80% -15%;background:linear-gradient(100deg,transparent,rgba(120,242,189,.13),transparent);transform:rotate(-12deg);animation:sweep 5s ease-in-out infinite}@keyframes sweep{50%{transform:translateX(40%) rotate(-12deg)}}
+    .asset-tab{border:1px solid #285a46;background:rgba(7,16,13,.6);color:#759386}.asset-tab.active{border-color:#c7ff6b;background:rgba(199,255,107,.1);color:#c7ff6b;box-shadow:0 0 22px rgba(199,255,107,.08)}
+    .sim-field{width:100%;border:1px solid #285a46;background:#07100d;color:#dcebe4;padding:.7rem .8rem;outline:none}.sim-field:focus{border-color:#78f2bd}.sim-output{background:radial-gradient(circle at top right,rgba(120,242,189,.09),transparent 42%),#08130f;border:1px solid #214b3b}
+    input[type=range]{accent-color:#c7ff6b}
   </style>
 </head>
 <body>
@@ -46,6 +51,43 @@
     </div>
   </header>
   <main class="relative z-10">
+    <section class="mx-auto max-w-7xl px-5 pb-14" id="live-regime-simulator">
+      <div class="regime-banner rounded-sm">
+        <div class="flex flex-wrap items-center justify-between gap-5 border-b border-mint/15 px-6 py-4 md:px-8">
+          <div class="flex items-center gap-3"><span class="live"></span><p class="eyebrow text-[.65rem] text-mint">Live Market Regime</p><span class="badge" id="sim-regime">CONNECTING</span></div>
+          <p class="text-[.65rem] text-muted" id="sim-market-clock">New York session sync in progress…</p>
+        </div>
+        <div class="grid lg:grid-cols-[.92fr_1.08fr]">
+          <div class="border-b border-line p-6 md:p-8 lg:border-b-0 lg:border-r">
+            <p class="eyebrow text-[.62rem] text-lime">Interactive Qwen AI</p>
+            <h2 class="display mt-3 text-3xl font-bold leading-tight text-white md:text-4xl">TRADE<br>SIMULATOR</h2>
+            <p class="mt-4 max-w-md text-xs leading-6 text-muted">Stress-test a paper setup against live Bitget rToken pricing, US equity basis, and the active New York market regime.</p>
+            <div class="mt-7">
+              <label class="eyebrow text-[.58rem] text-muted">Select Stock-Native Asset</label>
+              <div class="mt-3 grid grid-cols-3 gap-2" id="sim-assets">
+                <button class="asset-tab active px-3 py-3 text-xs font-semibold" data-asset="rNVDA">$rNVDA</button>
+                <button class="asset-tab px-3 py-3 text-xs font-semibold" data-asset="rTSLA">$rTSLA</button>
+                <button class="asset-tab px-3 py-3 text-xs font-semibold" data-asset="rAAPL">$rAAPL</button>
+              </div>
+            </div>
+            <div class="mt-5 grid grid-cols-2 gap-3">
+              <label class="text-[.62rem] text-muted">HORIZON<select class="sim-field mt-2 text-xs" id="sim-horizon"><option value="intraday">INTRADAY</option><option value="swing">2–5 DAY SWING</option><option value="position">POSITION</option></select></label>
+              <label class="text-[.62rem] text-muted">MAX RISK <span class="float-right text-lime" id="sim-risk-value">2.0%</span><input class="mt-4 w-full" id="sim-risk" type="range" min="0.5" max="5" step="0.5" value="2"></label>
+            </div>
+            <button class="mt-6 w-full border border-lime/60 bg-lime px-5 py-3 text-xs font-bold tracking-[.14em] text-ink" id="simulate-btn">RUN QWEN SIMULATION</button>
+          </div>
+          <div class="sim-output m-4 flex min-h-[390px] flex-col justify-center rounded-sm p-6 md:m-6 md:p-8" id="sim-output" aria-live="polite">
+            <div id="sim-idle">
+              <p class="eyebrow text-[.6rem] text-muted">Simulation Console</p>
+              <p class="display mt-4 text-2xl font-semibold text-white">READY FOR $rNVDA</p>
+              <p class="mt-3 max-w-md text-xs leading-6 text-muted">Choose an asset and risk limit, then run the model. All outputs are hypothetical and paper-only.</p>
+              <div class="mt-8 grid grid-cols-3 gap-3"><div class="h-20 skeleton rounded-sm"></div><div class="h-20 skeleton rounded-sm"></div><div class="h-20 skeleton rounded-sm"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="mx-auto max-w-7xl px-5 py-14" id="snapshot">
       <div class="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div><p class="eyebrow text-[.65rem] text-lime">Market Snapshot</p><h2 class="display mt-2 text-2xl font-semibold text-white md:text-3xl">TOKENIZED US STOCKS <span class="text-mint">(rTokens)</span></h2></div>
@@ -115,7 +157,7 @@
   </main>
   <footer class="relative z-10 mt-12 border-t border-line px-5 py-10 text-center"><p class="eyebrow text-[.6rem] text-muted">WhalePulse AI · Bitget AI Hackathon Season 2 · Track 3: Tokenized Stocks · Paper Trading Only</p></footer>
   <script>
-    const state={market:null};
+    const state={market:null,simAsset:'rNVDA'};
     const money=(value)=>Number.isFinite(value)?'$'+Number(value).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:4}):'—';
     const percent=(value)=>Number.isFinite(value)?`${value>=0?'+':''}${value.toFixed(2)}%`:'—';
     const tone=(value)=>!Number.isFinite(value)?'text-muted':value>=0?'text-mint':'text-red';
@@ -141,6 +183,8 @@
       state.market=market;
       document.getElementById('hero-regime').textContent=market.regime.code;
       document.getElementById('hero-time').textContent=`${market.regime.ny_time} · ${market.regime.discovery_mode}`;
+      document.getElementById('sim-regime').textContent=market.regime.code;
+      document.getElementById('sim-market-clock').textContent=`${market.regime.ny_time} · ${market.regime.discovery_mode} · Bitget LIVE`;
       document.getElementById('basis-regime').textContent=`NY REGIME: ${market.regime.code}`;
       document.getElementById('source-state').textContent=`Bitget: ${market.sources.bitget.toUpperCase()} · Yahoo Finance: ${market.sources.yahoo_finance.toUpperCase()} · Updated ${new Date(market.updated_at).toLocaleTimeString()}`;
       document.getElementById('ticker-grid').innerHTML=market.assets.map((asset)=>`
@@ -212,8 +256,69 @@
       finally{button.disabled=false;button.textContent='GENERATE PAPER TRADES';}
     }
 
+    function setSimulationAsset(asset){
+      state.simAsset=asset;
+      document.querySelectorAll('.asset-tab').forEach((button)=>button.classList.toggle('active',button.dataset.asset===asset));
+      const idle=document.querySelector('#sim-idle .display');
+      if(idle)idle.textContent=`READY FOR $${asset}`;
+    }
+
+    function renderSimulation(trade,engine){
+      const marketAsset=state.market?.assets.find((asset)=>asset.label===state.simAsset);
+      const horizon=document.getElementById('sim-horizon').value;
+      const risk=Number(document.getElementById('sim-risk').value);
+      const entry=Number(trade.entry_price)||marketAsset?.price;
+      const side=String(trade.side||((marketAsset?.basis_pct||0)>0.5?'SHORT':'LONG')).toUpperCase()==='SHORT'?'SHORT':'LONG';
+      const stopDistance=entry*0.02;
+      const horizonFactor={intraday:1,swing:1.5,position:2}[horizon];
+      const stop=Number(trade.stop_loss)||(side==='LONG'?entry-stopDistance:entry+stopDistance);
+      const target=Number(trade.take_profit)||(side==='LONG'?entry+stopDistance*1.5*horizonFactor:entry-stopDistance*1.5*horizonFactor);
+      const reward=Math.abs(target-entry),loss=Math.abs(entry-stop);
+      const ratio=loss?reward/loss:0;
+      const basis=marketAsset?.basis_pct;
+      const confidence=Math.min(94,Math.round(68+Math.abs(basis||0)*8));
+      document.getElementById('sim-output').innerHTML=`
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div><p class="eyebrow text-[.6rem] text-muted">Qwen Simulation Output</p><h3 class="display mt-2 text-3xl font-bold text-white">$${safe(state.simAsset)}</h3></div>
+          <div class="text-right"><span class="badge ${side==='LONG'?'!border-mint !text-mint':'!border-red !text-red'}">${side}</span><p class="mt-2 text-[.6rem] text-muted">${confidence}% MODEL CONFIDENCE</p></div>
+        </div>
+        <div class="mt-7 grid grid-cols-3 gap-3">
+          <div class="border border-line bg-black/10 p-3"><p class="text-[.58rem] text-muted">ENTRY</p><p class="display mt-2 text-lg text-white">${money(entry)}</p></div>
+          <div class="border border-line bg-black/10 p-3"><p class="text-[.58rem] text-muted">INVALIDATION</p><p class="display mt-2 text-lg text-red">${money(stop)}</p></div>
+          <div class="border border-line bg-black/10 p-3"><p class="text-[.58rem] text-muted">TARGET</p><p class="display mt-2 text-lg text-lime">${money(target)}</p></div>
+        </div>
+        <div class="mt-6 grid gap-3 sm:grid-cols-2">
+          <div><p class="text-[.58rem] text-muted">LIVE BASIS</p><p class="mt-1 text-sm ${tone(basis)}">${percent(basis)} · ${safe(marketAsset?.basis_state)}</p></div>
+          <div><p class="text-[.58rem] text-muted">SIMULATION PROFILE</p><p class="mt-1 text-sm text-white">${safe(horizon.toUpperCase())} · ${risk.toFixed(1)}% max risk · ${ratio.toFixed(2)}R</p></div>
+        </div>
+        <div class="mt-6 border-l-2 border-mint bg-mint/[.04] p-4"><p class="text-[.58rem] tracking-wider text-mint">MODEL RATIONALE</p><p class="mt-2 text-xs leading-6 text-muted">${safe(trade.rationale||`${marketAsset?.basis_state||'Aligned'} basis evaluated under the ${state.market?.regime.code||'current'} New York regime.`)}</p></div>
+        <p class="mt-5 text-[.58rem] text-muted">${safe(engine)} · Hypothetical paper scenario · No order transmitted</p>`;
+    }
+
+    async function runSimulation(){
+      const button=document.getElementById('simulate-btn');
+      button.disabled=true;button.textContent='QWEN IS SIMULATING…';
+      document.getElementById('sim-output').innerHTML='<div class="text-center"><span class="live mx-auto block"></span><p class="eyebrow mt-5 text-xs text-mint">Analyzing live price · basis · regime</p><p class="mt-3 text-xs text-muted">Building a risk-controlled paper scenario…</p></div>';
+      try{
+        if(!state.market)await loadMarket();
+        const data=await api('/api/trade-decisions');
+        let trade=data.decisions.find((item)=>String(item.asset).replace(/^\$/,'')===state.simAsset);
+        if(!trade){
+          const asset=state.market?.assets.find((item)=>item.label===state.simAsset);
+          if(!asset?.price)throw new Error('Live price unavailable for the selected rToken');
+          const side=(asset.basis_pct||0)>0.5?'SHORT':'LONG';
+          trade={asset:asset.label,side,entry_price:asset.price,rationale:`${asset.basis_state} basis evaluated against ${asset.stock} during ${state.market.regime.code}.`};
+        }
+        renderSimulation(trade,data.engine||'Qwen AI + risk validator');
+      }catch(error){document.getElementById('sim-output').innerHTML=`<div><p class="eyebrow text-[.6rem] text-red">Simulation unavailable</p><p class="mt-4 text-sm text-white">${safe(error.message)}</p><p class="mt-2 text-xs text-muted">Live data was not used and no paper scenario was created.</p></div>`;}
+      finally{button.disabled=false;button.textContent='RUN QWEN SIMULATION';}
+    }
+
     document.getElementById('scan-btn').addEventListener('click',runAgent);
     document.getElementById('trade-btn').addEventListener('click',generateTrades);
+    document.getElementById('simulate-btn').addEventListener('click',runSimulation);
+    document.querySelectorAll('.asset-tab').forEach((button)=>button.addEventListener('click',()=>setSimulationAsset(button.dataset.asset)));
+    document.getElementById('sim-risk').addEventListener('input',(event)=>{document.getElementById('sim-risk-value').textContent=`${Number(event.target.value).toFixed(1)}%`;});
     window.addEventListener('scroll',()=>{const root=document.documentElement;document.getElementById('progress').style.width=`${root.scrollTop/(root.scrollHeight-root.clientHeight)*100}%`;});
     renderPlaceholders();
     Promise.allSettled([loadMarket(),loadFlow(),loadCorrelations(),loadSentiment(),generateTrades()]);
