@@ -163,11 +163,22 @@
     const tone=(value)=>!Number.isFinite(value)?'text-muted':value>=0?'text-mint':'text-red';
     const safe=(value)=>String(value??'—').replace(/[&<>'"]/g,(char)=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':'&quot;'}[char]));
 
-    async function api(path){
-      const response=await fetch(path);
-      const json=await response.json();
-      if(!response.ok||!json.ok)throw new Error(json.error||'Request failed');
-      return json.data;
+    async function api(path,{retries=1,timeout=65000}={}){
+      let lastError;
+      for(let attempt=0;attempt<=retries;attempt+=1){
+        const controller=new AbortController();
+        const timer=setTimeout(()=>controller.abort(),timeout);
+        try{
+          const response=await fetch(path,{signal:controller.signal,headers:{Accept:'application/json'}});
+          const json=await response.json();
+          if(!response.ok||!json.ok)throw new Error(json.error||`Request failed (${response.status})`);
+          return json.data;
+        }catch(error){
+          lastError=error;
+          if(attempt<retries)await new Promise((resolve)=>setTimeout(resolve,700));
+        }finally{clearTimeout(timer);}
+      }
+      throw new Error(lastError?.name==='AbortError'?'Live request timed out':lastError?.message||'Live request unavailable');
     }
 
     function renderPlaceholders(){
@@ -310,7 +321,15 @@
           trade={asset:asset.label,side,entry_price:asset.price,rationale:`${asset.basis_state} basis evaluated against ${asset.stock} during ${state.market.regime.code}.`};
         }
         renderSimulation(trade,data.engine||'Qwen AI + risk validator');
-      }catch(error){document.getElementById('sim-output').innerHTML=`<div><p class="eyebrow text-[.6rem] text-red">Simulation unavailable</p><p class="mt-4 text-sm text-white">${safe(error.message)}</p><p class="mt-2 text-xs text-muted">Live data was not used and no paper scenario was created.</p></div>`;}
+      }catch(error){
+        const asset=state.market?.assets.find((item)=>item.label===state.simAsset);
+        if(asset?.price){
+          const side=(asset.basis_pct||0)>0.5?'SHORT':'LONG';
+          renderSimulation({asset:asset.label,side,entry_price:asset.price,rationale:`Live ${asset.basis_state.toLowerCase()} basis evaluated against ${asset.stock}; AI request fallback activated after: ${error.message}.`},'Live market risk fallback');
+        }else{
+          document.getElementById('sim-output').innerHTML=`<div><p class="eyebrow text-[.6rem] text-red">Simulation unavailable</p><p class="mt-4 text-sm text-white">${safe(error.message)}</p><button class="mt-5 border border-mint/40 px-4 py-2 text-xs text-mint" onclick="runSimulation()">RETRY LIVE CONNECTION</button></div>`;
+        }
+      }
       finally{button.disabled=false;button.textContent='RUN QWEN SIMULATION';}
     }
 
