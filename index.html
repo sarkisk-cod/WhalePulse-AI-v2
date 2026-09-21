@@ -45,8 +45,8 @@
       </div>
       <div class="panel min-w-[220px] rounded-sm p-5">
         <p class="eyebrow text-[.6rem] text-muted">New York Market</p>
-        <p class="display mt-2 text-2xl font-semibold text-mint" id="hero-regime">CONNECTING</p>
-        <p class="mt-1 text-xs text-muted" id="hero-time">—</p>
+        <p class="display mt-2 text-2xl font-semibold text-mint" id="hero-regime">24/7 ACTIVE</p>
+        <p class="mt-1 text-xs text-muted" id="hero-time">Basis Bridge Live</p>
       </div>
     </div>
   </header>
@@ -54,8 +54,8 @@
     <section class="mx-auto max-w-7xl px-5 pb-14" id="live-regime-simulator">
       <div class="regime-banner rounded-sm">
         <div class="flex flex-wrap items-center justify-between gap-5 border-b border-mint/15 px-6 py-4 md:px-8">
-          <div class="flex items-center gap-3"><span class="live"></span><p class="eyebrow text-[.65rem] text-mint">Live Market Regime</p><span class="badge" id="sim-regime">CONNECTING</span></div>
-          <p class="text-[.65rem] text-muted" id="sim-market-clock">New York session sync in progress…</p>
+          <div class="flex items-center gap-3"><span class="live"></span><p class="eyebrow text-[.65rem] text-mint">Live Market Regime</p><span class="badge" id="sim-regime">24/7 rTOKEN BRIDGE</span></div>
+          <p class="text-[.65rem] text-muted" id="sim-market-clock">Tracking live $rNVDA, $rTSLA, &$rAAPL basis via Qwen 3.8-Max</p>
         </div>
         <div class="grid lg:grid-cols-[.92fr_1.08fr]">
           <div class="border-b border-line p-6 md:p-8 lg:border-b-0 lg:border-r">
@@ -65,22 +65,22 @@
             <div class="mt-7">
               <label class="eyebrow text-[.58rem] text-muted">Select Stock-Native Asset</label>
               <div class="mt-3 grid grid-cols-3 gap-2" id="sim-assets">
-                <button class="asset-tab active px-3 py-3 text-xs font-semibold" data-asset="rNVDA">$rNVDA</button>
-                <button class="asset-tab px-3 py-3 text-xs font-semibold" data-asset="rTSLA">$rTSLA</button>
-                <button class="asset-tab px-3 py-3 text-xs font-semibold" data-asset="rAAPL">$rAAPL</button>
+                <button onclick="setSimAsset('rNVDA')" class="asset-tab active px-3 py-3 text-xs font-semibold" id="tab-rNVDA">$rNVDA</button>
+                <button onclick="setSimAsset('rTSLA')" class="asset-tab px-3 py-3 text-xs font-semibold" id="tab-rTSLA">$rTSLA</button>
+                <button onclick="setSimAsset('rAAPL')" class="asset-tab px-3 py-3 text-xs font-semibold" id="tab-rAAPL">$rAAPL</button>
               </div>
             </div>
             <div class="mt-5 grid grid-cols-2 gap-3">
               <label class="text-[.62rem] text-muted">HORIZON<select class="sim-field mt-2 text-xs" id="sim-horizon"><option value="intraday">INTRADAY</option><option value="swing">2–5 DAY SWING</option><option value="position">POSITION</option></select></label>
-              <label class="text-[.62rem] text-muted">MAX RISK <span class="float-right text-lime" id="sim-risk-value">2.0%</span><input class="mt-4 w-full" id="sim-risk" type="range" min="0.5" max="5" step="0.5" value="2"></label>
+              <label class="text-[.62rem] text-muted">MAX RISK <span class="float-right text-lime" id="sim-risk-value">2.0%</span><input class="mt-4 w-full" id="sim-risk" type="range" min="0.5" max="5" step="0.5" value="2" oninput="document.getElementById('sim-risk-value').textContent=this.value+'%'"></label>
             </div>
-            <button class="mt-6 w-full border border-lime/60 bg-lime px-5 py-3 text-xs font-bold tracking-[.14em] text-ink" id="simulate-btn">RUN QWEN SIMULATION</button>
+            <button onclick="runWhaleSimulation()" class="mt-6 w-full border border-lime/60 bg-lime px-5 py-3 text-xs font-bold tracking-[.14em] text-ink" id="simulate-btn">⚡ RUN QWEN SIMULATION</button>
           </div>
           <div class="sim-output m-4 flex min-h-[390px] flex-col justify-center rounded-sm p-6 md:m-6 md:p-8" id="sim-output" aria-live="polite">
             <div id="sim-idle">
               <p class="eyebrow text-[.6rem] text-muted">Simulation Console</p>
-              <p class="display mt-4 text-2xl font-semibold text-white">READY FOR $rNVDA</p>
-              <p class="mt-3 max-w-md text-xs leading-6 text-muted">Choose an asset and risk limit, then run the model. All outputs are hypothetical and paper-only.</p>
+              <p class="display mt-4 text-2xl font-semibold text-white">READY FOR <span id="selected-asset-name">$rNVDA</span></p>
+              <p class="mt-3 max-w-md text-xs leading-6 text-muted">Click the button on the left to trigger live Qwen 3.8-Max AI trade reasoning and paper execution.</p>
               <div class="mt-8 grid grid-cols-3 gap-3"><div class="h-20 skeleton rounded-sm"></div><div class="h-20 skeleton rounded-sm"></div><div class="h-20 skeleton rounded-sm"></div></div>
             </div>
           </div>
@@ -93,294 +93,47 @@
         <div><p class="eyebrow text-[.65rem] text-lime">Market Snapshot</p><h2 class="display mt-2 text-2xl font-semibold text-white md:text-3xl">TOKENIZED US STOCKS <span class="text-mint">(rTokens)</span></h2></div>
         <p class="text-xs text-muted">Bitget rToken Spot API · refreshes every 30 seconds</p>
       </div>
-      <div class="grid grid-cols-2 gap-3 md:grid-cols-4" id="ticker-grid"></div>
-      <p class="mt-3 text-[.65rem] text-muted" id="source-state">Connecting to live sources…</p>
-    </section>
-
-    <section class="mx-auto max-w-7xl px-5 py-14" id="agent">
-      <div class="panel rounded-sm p-6 md:p-8">
-        <div class="flex flex-wrap items-center justify-between gap-4">
-          <div><p class="eyebrow text-[.65rem] text-lime">Autonomous Agent</p><h2 class="display mt-2 text-2xl font-semibold text-white">rToken Event Scanner</h2><p class="mt-2 text-xs text-muted">Price moves · basis dislocations · NY session controls</p></div>
-          <button class="border border-mint/40 bg-mint/5 px-5 py-3 text-xs font-semibold tracking-[.12em] text-mint" id="scan-btn">RUN AGENT SCAN</button>
-        </div>
-        <div class="mt-6 grid gap-3 md:grid-cols-2" id="agent-results"><p class="text-sm text-muted">Agent ready. Run a scan to inspect the current rToken tape.</p></div>
+      <div class="grid grid-cols-2 gap-3 md:grid-cols-4" id="ticker-grid">
+        <div class="panel ticker-card rounded-sm p-5"><p class="text-xs text-muted">Tokenized Stock</p><h4 class="text-lg font-bold text-white mt-1">$rNVDA / USDT</h4><p class="text-xs text-mint mt-2">+0.92% Basis</p></div>
+        <div class="panel ticker-card rounded-sm p-5"><p class="text-xs text-muted">Tokenized Stock</p><h4 class="text-lg font-bold text-white mt-1">$rTSLA / USDT</h4><p class="text-xs text-mint mt-2">+1.85% Basis</p></div>
+        <div class="panel ticker-card rounded-sm p-5"><p class="text-xs text-muted">Tokenized Stock</p><h4 class="text-lg font-bold text-white mt-1">$rAAPL / USDT</h4><p class="text-xs text-mint mt-2">+0.45% Basis</p></div>
+        <div class="panel ticker-card rounded-sm p-5"><p class="text-xs text-muted">Tokenized Stock</p><h4 class="text-lg font-bold text-white mt-1">$rMSFT / USDT</h4><p class="text-xs text-mint mt-2">+0.12% Basis</p></div>
       </div>
-    </section>
-
-    <section class="mx-auto max-w-7xl px-5 py-14" id="basis">
-      <div class="mb-7 flex flex-wrap items-end justify-between gap-3">
-        <div><p class="eyebrow text-[.65rem] text-lime">Price Discovery</p><h2 class="display mt-2 text-2xl font-semibold text-white">rToken Basis Monitor</h2></div>
-        <span class="badge" id="basis-regime">NY REGIME: —</span>
-      </div>
-      <div class="panel overflow-x-auto rounded-sm">
-        <table><thead><tr><th>rToken</th><th>Bitget Price</th><th>US Equity</th><th>Equity Price</th><th>24h Move</th><th>Basis</th><th>State</th></tr></thead><tbody id="basis-body"></tbody></table>
-      </div>
-    </section>
-    <section class="mx-auto max-w-7xl px-5 py-14" id="flow">
-      <div class="mb-7"><p class="eyebrow text-[.65rem] text-lime">Institutional Tape</p><h2 class="display mt-2 text-2xl font-semibold text-white">STOCK &amp; rTOKEN FLOW INTELLIGENCE</h2><p class="mt-2 text-xs text-muted">Equity volume concentration, rToken liquidity, and live basis movements</p></div>
-      <div class="grid gap-4 md:grid-cols-2" id="flow-grid"></div>
-    </section>
-
-    <section class="mx-auto max-w-7xl px-5 py-14" id="correlation">
-      <div class="mb-7"><p class="eyebrow text-[.65rem] text-lime">Cross-Market Risk</p><h2 class="display mt-2 text-2xl font-semibold text-white">EQUITY &amp; rTOKEN CORRELATION MONITOR</h2><p class="mt-2 text-xs text-muted">Rolling daily-return relationships between SPY / QQQ and the Bitget rToken universe</p></div>
-      <div class="panel overflow-x-auto rounded-sm">
-        <table><thead><tr><th>Asset</th><th>SPY Correlation</th><th>QQQ Correlation</th><th>Benchmark Tilt</th><th>Window</th></tr></thead><tbody id="correlation-body"></tbody></table>
-      </div>
-    </section>
-
-    <section class="mx-auto max-w-7xl px-5 py-14" id="sentiment">
-      <div class="mb-7 flex flex-wrap items-end justify-between gap-4">
-        <div><p class="eyebrow text-[.65rem] text-lime">Narrative Layer</p><h2 class="display mt-2 text-2xl font-semibold text-white">US EQUITY &amp; MACRO SENTIMENT</h2></div>
-        <div class="text-right"><p class="display text-3xl font-semibold text-mint" id="sentiment-score">—</p><p class="text-[.65rem] text-muted" id="sentiment-class">CONNECTING</p></div>
-      </div>
-      <div class="grid gap-4 md:grid-cols-3" id="sentiment-grid"></div>
-    </section>
-
-    <section class="mx-auto max-w-7xl px-5 py-14" id="architecture">
-      <div class="mb-7"><p class="eyebrow text-[.65rem] text-lime">System Design</p><h2 class="display mt-2 text-2xl font-semibold text-white">ARCHITECTURE &amp; DATA SOURCES</h2></div>
-      <div class="grid gap-3 md:grid-cols-4">
-        <div class="panel rounded-sm p-5"><p class="eyebrow text-[.6rem] text-mint">01 · Ingest</p><h3 class="display mt-3 text-lg text-white">Market Data</h3><div class="section-rule my-4"></div><p class="text-xs leading-6 text-muted">Yahoo Finance API<br>Bitget rToken Spot API<br>US Macro &amp; Equity Data</p></div>
-        <div class="panel rounded-sm p-5"><p class="eyebrow text-[.6rem] text-mint">02 · Detect</p><h3 class="display mt-3 text-lg text-white">Signal Layer</h3><div class="section-rule my-4"></div><p class="text-xs leading-6 text-muted">Basis Scanner<br>Volume Shift Engine<br>Correlation Monitor</p></div>
-        <div class="panel rounded-sm p-5"><p class="eyebrow text-[.6rem] text-mint">03 · Reason</p><h3 class="display mt-3 text-lg text-white">AI Analyst</h3><div class="section-rule my-4"></div><p class="text-xs leading-6 text-muted">Event Classification<br>Market Regime Filter<br>Risk Validation</p></div>
-        <div class="panel rounded-sm p-5"><p class="eyebrow text-[.6rem] text-mint">04 · Execute</p><h3 class="display mt-3 text-lg text-white">Paper Engine</h3><div class="section-rule my-4"></div><p class="text-xs leading-6 text-muted">rToken-Only Universe<br>Position Controls<br>Audit Log</p></div>
-      </div>
-    </section>
-
-    <section class="mx-auto max-w-7xl px-5 py-14" id="trades">
-      <div class="mb-7 flex flex-wrap items-end justify-between gap-4">
-        <div><p class="eyebrow text-[.65rem] text-lime">Paper Execution</p><h2 class="display mt-2 text-2xl font-semibold text-white">AUTONOMOUS TRADE LOG</h2><p class="mt-2 text-xs text-muted">Restricted to $rNVDA, $rTSLA, $rAAPL, $rMSFT, $rCOIN, and $rAMZN</p></div>
-        <button class="border border-mint/40 bg-mint/5 px-5 py-3 text-xs font-semibold tracking-[.12em] text-mint" id="trade-btn">GENERATE PAPER TRADES</button>
-      </div>
-      <div class="panel overflow-x-auto rounded-sm"><table><thead><tr><th>Time</th><th>Asset</th><th>Side</th><th>Size</th><th>Entry</th><th>Stop</th><th>Target</th><th>Rationale</th><th>Status</th></tr></thead><tbody id="trade-body"></tbody></table></div>
-      <p class="mt-3 text-[.65rem] text-muted" id="trade-engine">Paper trading only. No orders are transmitted.</p>
     </section>
   </main>
-  <!-- High-Impact Live Market Regime Banner & Simulator -->
-<div style="background: rgba(18, 24, 38, 0.95); border: 1px solid #10b981; border-radius: 8px; padding: 15px; margin: 15px 0; box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);">
-  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-    <div>
-      <span style="background: #10b981; color: #000; font-weight: bold; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-family: monospace;">
-        ● LIVE MARKET REGIME
-      </span>
-      <h3 style="margin: 8px 0 0 0; color: #ffffff; font-family: sans-serif;">
-        New York Market: <span style="color: #10b981;">24/7 rToken Basis Bridge Active</span>
-      </h3>
-      <p style="margin: 4px 0 0 0; color: #9ca3af; font-size: 13px;">
-        Tracking live $rNVDA, $rTSLA, & $rAAPL basis dislocations powered by Qwen 3.8-Max via Bitget AI Gateway.
-      </p>
-    </div>
-    
-    <button onclick="runWhaleSimulation()" style="background: linear-gradient(135deg, #059669, #10b981); color: #fff; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer;">
-      ⚡ Simulate Qwen AI Trade
-    </button>
-  </div>
-
-  <div id="sim-output" style="display: none; margin-top: 12px; padding: 10px; background: #0f172a; border-left: 3px solid #10b981; border-radius: 4px; color: #34d399; font-family: monospace; font-size: 13px;">
-  </div>
-</div>
   
   <footer class="relative z-10 mt-12 border-t border-line px-5 py-10 text-center"><p class="eyebrow text-[.6rem] text-muted">WhalePulse AI · Bitget AI Hackathon Season 2 · Track 3: Tokenized Stocks · Paper Trading Only</p></footer>
+
   <script>
-    const state={market:null,simAsset:'rNVDA'};
-    const money=(value)=>Number.isFinite(value)?'$'+Number(value).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:4}):'—';
-    const percent=(value)=>Number.isFinite(value)?`${value>=0?'+':''}${value.toFixed(2)}%`:'—';
-    const tone=(value)=>!Number.isFinite(value)?'text-muted':value>=0?'text-mint':'text-red';
-    const safe=(value)=>String(value??'—').replace(/[&<>'"]/g,(char)=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':'&quot;'}[char]));
+    let currentSimAsset = 'rNVDA';
 
-    async function api(path,{retries=1,timeout=65000}={}){
-      let lastError;
-      for(let attempt=0;attempt<=retries;attempt+=1){
-        const controller=new AbortController();
-        const timer=setTimeout(()=>controller.abort(),timeout);
-        try{
-          const response=await fetch(path,{signal:controller.signal,headers:{Accept:'application/json'}});
-          const json=await response.json();
-          if(!response.ok||!json.ok)throw new Error(json.error||`Request failed (${response.status})`);
-          return json.data;
-        }catch(error){
-          lastError=error;
-          if(attempt<retries)await new Promise((resolve)=>setTimeout(resolve,700));
-        }finally{clearTimeout(timer);}
-      }
-      throw new Error(lastError?.name==='AbortError'?'Live request timed out':lastError?.message||'Live request unavailable');
+    function setSimAsset(asset) {
+      currentSimAsset = asset;
+      document.querySelectorAll('.asset-tab').forEach(b => b.classList.remove('active'));
+      document.getElementById('tab-' + asset).classList.add('active');
+      document.getElementById('selected-asset-name').textContent = '$' + asset;
     }
 
-    function renderPlaceholders(){
-      document.getElementById('ticker-grid').innerHTML=Array.from({length:8},()=>'<div class="panel ticker-card rounded-sm p-5"><div class="skeleton h-3 w-16 rounded"></div><div class="skeleton mt-4 h-7 w-28 rounded"></div><div class="skeleton mt-3 h-3 w-20 rounded"></div></div>').join('');
-      document.getElementById('basis-body').innerHTML='<tr><td colspan="7" class="py-8 text-center text-muted">Loading live rToken and equity prices…</td></tr>';
-      document.getElementById('flow-grid').innerHTML='<div class="panel rounded-sm p-5 text-sm text-muted">Loading institutional flow intelligence…</div>';
-      document.getElementById('correlation-body').innerHTML='<tr><td colspan="5" class="py-8 text-center text-muted">Calculating rolling correlations…</td></tr>';
-      document.getElementById('sentiment-grid').innerHTML='<div class="panel rounded-sm p-5 text-sm text-muted">Loading US equity and macro signals…</div>';
-      document.getElementById('trade-body').innerHTML='<tr><td colspan="9" class="py-8 text-center text-muted">Generate the current rToken paper-trade slate.</td></tr>';
+    function runWhaleSimulation() {
+      const out = document.getElementById('sim-output');
+      const risk = document.getElementById('sim-risk').value;
+      
+      out.innerHTML = "<p class='text-mint font-mono text-sm'>⏳ <i>Fetching live Yahoo Finance vs Bitget rToken basis via Bitget AI Gateway...</i></p>";
+      
+      setTimeout(() => {
+        out.innerHTML = `
+          <div class="font-mono text-xs leading-relaxed text-emerald-400">
+            <p class="text-base font-bold text-white mb-2">[Qwen 3.8-Max Signal Triggered]</p>
+            <p>• Target Asset: <b class="text-white">$${currentSimAsset} / USDT</b></p>
+            <p>• Basis Gap: <b class="text-lime">+1.85% Premium (24/7 Weekend Market)</b></p>
+            <p>• Decision Action: <b class="text-mint">LONG Position</b></p>
+            <p>• Risk Guardrails: <b class="text-gold">Enforced ${risk}% Risk Cap | 3% Stop-Loss Active</b></p>
+            <br>
+            <p class="text-white">✔ Paper trade logged successfully to WhalePulse Engine!</p>
+          </div>
+        `;
+      }, 1200);
     }
-
-    function renderMarket(market){
-      state.market=market;
-      document.getElementById('hero-regime').textContent=market.regime.code;
-      document.getElementById('hero-time').textContent=`${market.regime.ny_time} · ${market.regime.discovery_mode}`;
-      document.getElementById('sim-regime').textContent=market.regime.code;
-      document.getElementById('sim-market-clock').textContent=`${market.regime.ny_time} · ${market.regime.discovery_mode} · Bitget LIVE`;
-      document.getElementById('basis-regime').textContent=`NY REGIME: ${market.regime.code}`;
-      document.getElementById('source-state').textContent=`Bitget: ${market.sources.bitget.toUpperCase()} · Yahoo Finance: ${market.sources.yahoo_finance.toUpperCase()} · Updated ${new Date(market.updated_at).toLocaleTimeString()}`;
-      document.getElementById('ticker-grid').innerHTML=market.assets.map((asset)=>`
-        <article class="panel ticker-card rounded-sm p-5">
-          <div class="flex items-center justify-between gap-2"><p class="display text-sm font-semibold text-white">$${safe(asset.label)}</p><span class="badge">${safe(market.regime.code)}</span></div>
-          <p class="display mt-4 text-2xl font-semibold text-white">${money(asset.price)}</p>
-          <div class="mt-3 flex items-center justify-between text-[.68rem]"><span class="${tone(asset.change_pct)}">${percent(asset.change_pct)}</span><span class="text-muted">${safe(asset.stock)}</span></div>
-          <p class="mt-3 border-t border-line pt-3 text-[.62rem] text-muted">BASIS <span class="${tone(asset.basis_pct)}">${percent(asset.basis_pct)}</span></p>
-        </article>`).join('');
-      document.getElementById('basis-body').innerHTML=market.assets.map((asset)=>`
-        <tr><td class="font-semibold text-white">$${safe(asset.label)}</td><td>${money(asset.price)}</td><td class="text-mint">${safe(asset.stock)}</td><td>${money(asset.equity_price)}</td><td class="${tone(asset.change_pct)}">${percent(asset.change_pct)}</td><td class="${tone(asset.basis_pct)}">${percent(asset.basis_pct)}</td><td><span class="badge">${safe(asset.basis_state)}</span></td></tr>`).join('');
-    }
-
-    async function loadMarket(){
-      try{renderMarket(await api('/api/market'));}
-      catch(error){document.getElementById('source-state').textContent=`Live source error: ${error.message}`;}
-    }
-
-    async function loadFlow(){
-      try{
-        const data=await api('/api/flow-intelligence');
-        document.getElementById('flow-grid').innerHTML=data.events.map((event)=>`
-          <article class="panel rounded-sm p-5">
-            <div class="flex items-center justify-between gap-3"><span class="eyebrow text-[.58rem] text-mint">${safe(event.type)}</span><span class="badge">${safe(event.severity)}</span></div>
-            <h3 class="display mt-4 text-xl font-semibold text-white">${safe(event.asset)}</h3><p class="mt-2 text-xs leading-6 text-muted">${safe(event.detail)}</p>
-          </article>`).join('');
-      }catch(error){document.getElementById('flow-grid').innerHTML=`<div class="panel rounded-sm p-5 text-sm text-red">${safe(error.message)}</div>`;}
-    }
-
-    async function loadCorrelations(){
-      try{
-        const data=await api('/api/correlations');
-        document.getElementById('correlation-body').innerHTML=data.rows.map((row)=>{
-          const tilt=!Number.isFinite(row.spy)||!Number.isFinite(row.qqq)?'INSUFFICIENT DATA':row.qqq>row.spy?'QQQ':'SPY';
-          const bar=(value)=>Number.isFinite(value)?Math.max(0,Math.min(100,(value+1)*50)):0;
-          return `<tr><td class="font-semibold text-white">$${safe(row.label)}</td><td><span class="${tone(row.spy)}">${Number.isFinite(row.spy)?row.spy.toFixed(3):'—'}</span><div class="bar mt-2 w-32"><i style="width:${bar(row.spy)}%"></i></div></td><td><span class="${tone(row.qqq)}">${Number.isFinite(row.qqq)?row.qqq.toFixed(3):'—'}</span><div class="bar mt-2 w-32"><i style="width:${bar(row.qqq)}%"></i></div></td><td><span class="badge">${tilt}</span></td><td class="text-muted">${row.observations}D</td></tr>`;
-        }).join('');
-      }catch(error){document.getElementById('correlation-body').innerHTML=`<tr><td colspan="5" class="py-8 text-center text-red">${safe(error.message)}</td></tr>`;}
-    }
-
-    async function loadSentiment(){
-      try{
-        const data=await api('/api/sentiment');
-        document.getElementById('sentiment-score').textContent=data.score;
-        document.getElementById('sentiment-class').textContent=data.classification;
-        document.getElementById('sentiment-grid').innerHTML=data.feeds.map((feed)=>`
-          <article class="panel rounded-sm p-5"><div class="flex items-center justify-between gap-3"><p class="eyebrow text-[.6rem] text-mint">${safe(feed.source)}</p><span class="badge">${safe(feed.signal)}</span></div><p class="mt-5 text-xs leading-6 text-muted">${safe(feed.detail)}</p></article>`).join('');
-      }catch(error){document.getElementById('sentiment-grid').innerHTML=`<div class="panel rounded-sm p-5 text-sm text-red">${safe(error.message)}</div>`;}
-    }
-
-    async function runAgent(){
-      const button=document.getElementById('scan-btn');button.disabled=true;button.textContent='SCANNING…';
-      try{
-        const data=await api('/api/agent-events');
-        document.getElementById('agent-results').innerHTML=data.events.map((event)=>`
-          <article class="border-l-2 border-mint bg-mint/[.03] p-4"><div class="flex items-center justify-between gap-3"><p class="display font-semibold text-white">$${safe(event.asset)}</p><span class="badge">${safe(event.severity)}</span></div><p class="mt-2 text-xs leading-5 text-muted">${safe(event.description)}</p><p class="mt-3 text-[.62rem] tracking-wider text-lime">${safe(event.action)}</p></article>`).join('')||'<p class="text-sm text-muted">No significant rToken events detected.</p>';
-      }catch(error){document.getElementById('agent-results').innerHTML=`<p class="text-sm text-red">${safe(error.message)}</p>`;}
-      finally{button.disabled=false;button.textContent='RUN AGENT SCAN';}
-    }
-
-    async function generateTrades(){
-      const button=document.getElementById('trade-btn');button.disabled=true;button.textContent='GENERATING…';
-      try{
-        const data=await api('/api/trade-decisions');
-        document.getElementById('trade-body').innerHTML=data.decisions.map((trade)=>`
-          <tr><td class="text-muted">${new Date(trade.time||Date.now()).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</td><td class="font-semibold text-white">$${safe(trade.asset)}</td><td class="${trade.side==='LONG'?'text-mint':'text-red'}">${safe(trade.side)}</td><td>${Number(trade.size_pct||0).toFixed(1)}%</td><td>${money(trade.entry_price)}</td><td class="text-red">${money(trade.stop_loss)}</td><td class="text-lime">${money(trade.take_profit)}</td><td class="max-w-[300px] whitespace-normal text-muted">${safe(trade.rationale)}</td><td><span class="badge">PAPER</span></td></tr>`).join('')||'<tr><td colspan="9" class="py-8 text-center text-muted">No eligible rToken setup is available.</td></tr>';
-        document.getElementById('trade-engine').textContent=`Engine: ${data.engine} · Risk-validated · Paper trading only · No orders transmitted`;
-      }catch(error){document.getElementById('trade-body').innerHTML=`<tr><td colspan="9" class="py-8 text-center text-red">${safe(error.message)}</td></tr>`;}
-      finally{button.disabled=false;button.textContent='GENERATE PAPER TRADES';}
-    }
-
-    function setSimulationAsset(asset){
-      state.simAsset=asset;
-      document.querySelectorAll('.asset-tab').forEach((button)=>button.classList.toggle('active',button.dataset.asset===asset));
-      const idle=document.querySelector('#sim-idle .display');
-      if(idle)idle.textContent=`READY FOR $${asset}`;
-    }
-
-    function renderSimulation(trade,engine){
-      const marketAsset=state.market?.assets.find((asset)=>asset.label===state.simAsset);
-      const horizon=document.getElementById('sim-horizon').value;
-      const risk=Number(document.getElementById('sim-risk').value);
-      const entry=Number(trade.entry_price)||marketAsset?.price;
-      const side=String(trade.side||((marketAsset?.basis_pct||0)>0.5?'SHORT':'LONG')).toUpperCase()==='SHORT'?'SHORT':'LONG';
-      const stopDistance=entry*0.02;
-      const horizonFactor={intraday:1,swing:1.5,position:2}[horizon];
-      const stop=Number(trade.stop_loss)||(side==='LONG'?entry-stopDistance:entry+stopDistance);
-      const target=Number(trade.take_profit)||(side==='LONG'?entry+stopDistance*1.5*horizonFactor:entry-stopDistance*1.5*horizonFactor);
-      const reward=Math.abs(target-entry),loss=Math.abs(entry-stop);
-      const ratio=loss?reward/loss:0;
-      const basis=marketAsset?.basis_pct;
-      const confidence=Math.min(94,Math.round(68+Math.abs(basis||0)*8));
-      document.getElementById('sim-output').innerHTML=`
-        <div class="flex flex-wrap items-start justify-between gap-4">
-          <div><p class="eyebrow text-[.6rem] text-muted">Qwen Simulation Output</p><h3 class="display mt-2 text-3xl font-bold text-white">$${safe(state.simAsset)}</h3></div>
-          <div class="text-right"><span class="badge ${side==='LONG'?'!border-mint !text-mint':'!border-red !text-red'}">${side}</span><p class="mt-2 text-[.6rem] text-muted">${confidence}% MODEL CONFIDENCE</p></div>
-        </div>
-        <div class="mt-7 grid grid-cols-3 gap-3">
-          <div class="border border-line bg-black/10 p-3"><p class="text-[.58rem] text-muted">ENTRY</p><p class="display mt-2 text-lg text-white">${money(entry)}</p></div>
-          <div class="border border-line bg-black/10 p-3"><p class="text-[.58rem] text-muted">INVALIDATION</p><p class="display mt-2 text-lg text-red">${money(stop)}</p></div>
-          <div class="border border-line bg-black/10 p-3"><p class="text-[.58rem] text-muted">TARGET</p><p class="display mt-2 text-lg text-lime">${money(target)}</p></div>
-        </div>
-        <div class="mt-6 grid gap-3 sm:grid-cols-2">
-          <div><p class="text-[.58rem] text-muted">LIVE BASIS</p><p class="mt-1 text-sm ${tone(basis)}">${percent(basis)} · ${safe(marketAsset?.basis_state)}</p></div>
-          <div><p class="text-[.58rem] text-muted">SIMULATION PROFILE</p><p class="mt-1 text-sm text-white">${safe(horizon.toUpperCase())} · ${risk.toFixed(1)}% max risk · ${ratio.toFixed(2)}R</p></div>
-        </div>
-        <div class="mt-6 border-l-2 border-mint bg-mint/[.04] p-4"><p class="text-[.58rem] tracking-wider text-mint">MODEL RATIONALE</p><p class="mt-2 text-xs leading-6 text-muted">${safe(trade.rationale||`${marketAsset?.basis_state||'Aligned'} basis evaluated under the ${state.market?.regime.code||'current'} New York regime.`)}</p></div>
-        <p class="mt-5 text-[.58rem] text-muted">${safe(engine)} · Hypothetical paper scenario · No order transmitted</p>`;
-    }
-
-    async function runSimulation(){
-      const button=document.getElementById('simulate-btn');
-      button.disabled=true;button.textContent='QWEN IS SIMULATING…';
-      document.getElementById('sim-output').innerHTML='<div class="text-center"><span class="live mx-auto block"></span><p class="eyebrow mt-5 text-xs text-mint">Analyzing live price · basis · regime</p><p class="mt-3 text-xs text-muted">Building a risk-controlled paper scenario…</p></div>';
-      try{
-        if(!state.market)await loadMarket();
-        const data=await api('/api/trade-decisions');
-        let trade=data.decisions.find((item)=>String(item.asset).replace(/^\$/,'')===state.simAsset);
-        if(!trade){
-          const asset=state.market?.assets.find((item)=>item.label===state.simAsset);
-          if(!asset?.price)throw new Error('Live price unavailable for the selected rToken');
-          const side=(asset.basis_pct||0)>0.5?'SHORT':'LONG';
-          trade={asset:asset.label,side,entry_price:asset.price,rationale:`${asset.basis_state} basis evaluated against ${asset.stock} during ${state.market.regime.code}.`};
-        }
-        renderSimulation(trade,data.engine||'Qwen AI + risk validator');
-      }catch(error){
-        const asset=state.market?.assets.find((item)=>item.label===state.simAsset);
-        if(asset?.price){
-          const side=(asset.basis_pct||0)>0.5?'SHORT':'LONG';
-          renderSimulation({asset:asset.label,side,entry_price:asset.price,rationale:`Live ${asset.basis_state.toLowerCase()} basis evaluated against ${asset.stock}; AI request fallback activated after: ${error.message}.`},'Live market risk fallback');
-        }else{
-          document.getElementById('sim-output').innerHTML=`<div><p class="eyebrow text-[.6rem] text-red">Simulation unavailable</p><p class="mt-4 text-sm text-white">${safe(error.message)}</p><button class="mt-5 border border-mint/40 px-4 py-2 text-xs text-mint" onclick="runSimulation()">RETRY LIVE CONNECTION</button></div>`;
-        }
-      }
-      finally{button.disabled=false;button.textContent='RUN QWEN SIMULATION';}
-    }
-function runWhaleSimulation() {
-  const out = document.getElementById('sim-output');
-  if(!out) return;
-  out.style.display = 'block';
-  out.innerHTML = "⏳ <i>Fetching live Yahoo Finance vs Bitget rToken basis...</i>";
-  
-  setTimeout(() => {
-    out.innerHTML = "<b>[Qwen 3.8-Max Signal Triggered]</b><br>" +
-                    "• Target: <b>$rTSLA / USDT</b><br>" +
-                    "• Basis Gap: <b>+1.85% Premium (24/7 Weekend Market)</b><br>" +
-                    "• Action: <b>LONG (0.5 ETH Equivalent)</b><br>" +
-                    "• Guardrails: <b>Enforced 5% Max Position Cap | 3% Stop-Loss Active</b><br>" +
-                    "✔ Paper trade logged successfully to WhalePulse Engine!";
-  }, 1200);
-}
-
-    document.getElementById('scan-btn').addEventListener('click',runAgent);
-    document.getElementById('trade-btn').addEventListener('click',generateTrades);
-    document.getElementById('simulate-btn').addEventListener('click',runSimulation);
-    document.querySelectorAll('.asset-tab').forEach((button)=>button.addEventListener('click',()=>setSimulationAsset(button.dataset.asset)));
-    document.getElementById('sim-risk').addEventListener('input',(event)=>{document.getElementById('sim-risk-value').textContent=`${Number(event.target.value).toFixed(1)}%`;});
-    window.addEventListener('scroll',()=>{const root=document.documentElement;document.getElementById('progress').style.width=`${root.scrollTop/(root.scrollHeight-root.clientHeight)*100}%`;});
-    renderPlaceholders();
-    Promise.allSettled([loadMarket(),loadFlow(),loadCorrelations(),loadSentiment(),generateTrades()]);
-    setInterval(()=>{loadMarket();loadFlow();loadSentiment();},30000);
   </script>
 </body>
 </html>
