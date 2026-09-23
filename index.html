@@ -27,6 +27,9 @@
     .regime-banner:before{content:"";position:absolute;z-index:-1;inset:-80% 48% -80% -15%;background:linear-gradient(100deg,transparent,rgba(120,242,189,.13),transparent);transform:rotate(-12deg);animation:sweep 5s ease-in-out infinite}@keyframes sweep{50%{transform:translateX(40%) rotate(-12deg)}}
     .asset-tab{border:1px solid #285a46;background:rgba(7,16,13,.6);color:#759386}.asset-tab.active{border-color:#c7ff6b;background:rgba(199,255,107,.1);color:#c7ff6b;box-shadow:0 0 22px rgba(199,255,107,.08)}
     .sim-field{width:100%;border:1px solid #285a46;background:#07100d;color:#dcebe4;padding:.7rem .8rem;outline:none}.sim-field:focus{border-color:#78f2bd}.sim-output{background:radial-gradient(circle at top right,rgba(120,242,189,.09),transparent 42%),#08130f;border:1px solid #214b3b}
+    .arb-shell{background:radial-gradient(circle at 15% 20%,rgba(199,255,107,.08),transparent 28%),linear-gradient(135deg,#0c1d17,#07100d);border:1px solid rgba(199,255,107,.22)}
+    .arb-card{background:rgba(5,14,11,.72);border:1px solid #1d4234;transition:.25s}.arb-card:hover{border-color:#78f2bd;transform:translateY(-2px)}
+    .vol-dial{display:grid;place-items:center;width:84px;height:84px;border-radius:50%;position:relative;background:conic-gradient(#c7ff6b var(--vol),#132b22 0)}.vol-dial:after{content:"";position:absolute;inset:7px;border-radius:50%;background:#09150f}.vol-dial>span{position:relative;z-index:1}
     input[type=range]{accent-color:#c7ff6b}
   </style>
 </head>
@@ -146,6 +149,22 @@
       </div>
     </section>
 
+    <section class="mx-auto max-w-7xl px-5 py-14" id="institutional-radar">
+      <div class="arb-shell overflow-hidden rounded-sm">
+        <div class="flex flex-wrap items-end justify-between gap-5 border-b border-lime/15 px-6 py-6 md:px-8">
+          <div><p class="eyebrow text-[.65rem] text-lime">Cross-Venue Intelligence</p><h2 class="display mt-2 text-2xl font-semibold text-white md:text-3xl">INSTITUTIONAL ARBITRAGE &amp; VOLATILITY RADAR</h2><p class="mt-2 text-xs text-muted">Bitget rToken pricing versus US equity reference venues · powered by Qwen 3.8-Max</p></div>
+          <button class="border border-lime/50 bg-lime/10 px-5 py-3 text-xs font-semibold tracking-[.12em] text-lime" id="arb-scan-btn">RUN QWEN ARB SCAN</button>
+        </div>
+        <div class="grid gap-4 p-6 md:grid-cols-2 md:p-8" id="arb-assets">
+          <div class="arb-card h-64 skeleton rounded-sm"></div><div class="arb-card h-64 skeleton rounded-sm"></div>
+        </div>
+        <div class="border-t border-line bg-black/10 px-6 py-5 md:px-8">
+          <div class="flex flex-wrap items-center justify-between gap-3"><p class="eyebrow text-[.6rem] text-mint">Qwen 3.8-Max Convergence Desk</p><span class="badge" id="arb-regime">REGIME: —</span></div>
+          <div class="mt-4 grid gap-3 md:grid-cols-2" id="arb-insight"><p class="text-xs leading-6 text-muted">Live basis data is loading. Run the scan for model-generated paper convergence postures.</p></div>
+        </div>
+      </div>
+    </section>
+
     <section class="mx-auto max-w-7xl px-5 py-14" id="trades">
       <div class="mb-7 flex flex-wrap items-end justify-between gap-4">
         <div><p class="eyebrow text-[.65rem] text-lime">Paper Execution</p><h2 class="display mt-2 text-2xl font-semibold text-white">AUTONOMOUS TRADE LOG</h2><p class="mt-2 text-xs text-muted">Restricted to $rNVDA, $rTSLA, $rAAPL, $rMSFT, $rCOIN, and $rAMZN</p></div>
@@ -207,6 +226,30 @@
         </article>`).join('');
       document.getElementById('basis-body').innerHTML=market.assets.map((asset)=>`
         <tr><td class="font-semibold text-white">$${safe(asset.label)}</td><td>${money(asset.price)}</td><td class="text-mint">${safe(asset.stock)}</td><td>${money(asset.equity_price)}</td><td class="${tone(asset.change_pct)}">${percent(asset.change_pct)}</td><td class="${tone(asset.basis_pct)}">${percent(asset.basis_pct)}</td><td><span class="badge">${safe(asset.basis_state)}</span></td></tr>`).join('');
+      renderArbRadar(market);
+    }
+
+    function renderArbRadar(market){
+      const assets=market.assets.filter((asset)=>['rNVDA','rTSLA'].includes(asset.label));
+      document.getElementById('arb-regime').textContent=`REGIME: ${market.regime.code} · ${market.regime.ny_time}`;
+      document.getElementById('arb-assets').innerHTML=assets.map((asset)=>{
+        const basisBps=Number.isFinite(asset.basis_pct)?asset.basis_pct*100:null;
+        const rangeVol=asset.price&&asset.high&&asset.low?((asset.high-asset.low)/asset.price)*100:Math.abs(asset.change_pct||0);
+        const dial=Math.max(4,Math.min(100,rangeVol*12));
+        const posture=!Number.isFinite(basisBps)?'DATA WAIT':basisBps>50?'SELL rTOKEN / BUY STOCK':basisBps<-50?'BUY rTOKEN / SELL STOCK':'MONITOR CONVERGENCE';
+        const window=Number.isFinite(basisBps)&&Math.abs(basisBps)>=50?'ARB WINDOW':'TIGHT BASIS';
+        return `<article class="arb-card rounded-sm p-5 md:p-6">
+          <div class="flex items-start justify-between gap-4"><div><p class="eyebrow text-[.58rem] text-muted">Cross-Venue Pair</p><h3 class="display mt-2 text-2xl font-bold text-white">$${safe(asset.label)} <span class="text-sm font-normal text-muted">/ ${safe(asset.stock)}</span></h3></div><span class="badge">${window}</span></div>
+          <div class="mt-6 grid grid-cols-[1fr_auto] gap-5">
+            <div>
+              <div class="grid grid-cols-2 gap-3"><div><p class="text-[.58rem] text-muted">BITGET rTOKEN</p><p class="display mt-1 text-lg text-white">${money(asset.price)}</p></div><div><p class="text-[.58rem] text-muted">US EQUITY REF</p><p class="display mt-1 text-lg text-white">${money(asset.equity_price)}</p></div></div>
+              <div class="mt-5"><p class="text-[.58rem] text-muted">LIVE BASIS</p><p class="display mt-1 text-2xl font-semibold ${tone(basisBps)}">${Number.isFinite(basisBps)?`${basisBps>=0?'+':''}${basisBps.toFixed(1)} bps`:'—'}</p><p class="mt-2 text-[.62rem] tracking-wider text-lime">${posture}</p></div>
+            </div>
+            <div class="text-center"><div class="vol-dial" style="--vol:${dial}%"><span class="display text-sm font-semibold text-white">${rangeVol.toFixed(2)}%</span></div><p class="mt-2 text-[.55rem] text-muted">24H RANGE VOL</p></div>
+          </div>
+          <div class="mt-5 flex items-center justify-between border-t border-line pt-4 text-[.6rem] text-muted"><span>VOLUME ${asset.volume_usd?money(asset.volume_usd):'—'}</span><span>${safe(market.regime.discovery_mode)}</span></div>
+        </article>`;
+      }).join('');
     }
 
     async function loadMarket(){
@@ -265,6 +308,33 @@
         document.getElementById('trade-engine').textContent=`Engine: ${data.engine} · Risk-validated · Paper trading only · No orders transmitted`;
       }catch(error){document.getElementById('trade-body').innerHTML=`<tr><td colspan="9" class="py-8 text-center text-red">${safe(error.message)}</td></tr>`;}
       finally{button.disabled=false;button.textContent='GENERATE PAPER TRADES';}
+    }
+
+    function renderArbInsights(decisions,engine){
+      const radarAssets=(state.market?.assets||[]).filter((asset)=>['rNVDA','rTSLA'].includes(asset.label));
+      document.getElementById('arb-insight').innerHTML=radarAssets.map((asset)=>{
+        const trade=decisions.find((item)=>String(item.asset||'').replace(/^\$/,'')===asset.label)||{};
+        const basisBps=Number.isFinite(asset.basis_pct)?asset.basis_pct*100:null;
+        const side=trade.side||(!Number.isFinite(basisBps)?'WATCH':basisBps>50?'SHORT':basisBps<-50?'LONG':'WATCH');
+        const action=side==='LONG'?'ACCUMULATE rTOKEN LEG':side==='SHORT'?'HEDGE rTOKEN LEG':'WAIT FOR WIDER BASIS';
+        const rationale=trade.rationale||`${asset.basis_state} cross-venue basis under the ${state.market.regime.code.toLowerCase()} New York regime.`;
+        return `<div class="border-l-2 ${side==='LONG'?'border-mint':side==='SHORT'?'border-red':'border-gold'} bg-white/[.02] p-4"><div class="flex items-center justify-between gap-3"><p class="display font-semibold text-white">$${safe(asset.label)}</p><span class="badge">${safe(side)}</span></div><p class="mt-3 text-[.62rem] tracking-wider text-lime">${action}</p><p class="mt-2 text-xs leading-5 text-muted">${safe(rationale)}</p></div>`;
+      }).join('');
+      document.getElementById('arb-regime').textContent=`${safe(engine)} · ${state.market?.regime.code||'LIVE'}`;
+    }
+
+    async function runArbScan(){
+      const button=document.getElementById('arb-scan-btn');
+      button.disabled=true;button.textContent='SCANNING VENUES…';
+      document.getElementById('arb-insight').innerHTML='<p class="text-xs text-mint">Qwen is comparing rToken basis, volatility, liquidity, and New York regime controls…</p>';
+      try{
+        if(!state.market)await loadMarket();
+        const data=await api('/api/trade-decisions');
+        renderArbInsights(data.decisions||[],data.engine||'Qwen 3.8-Max');
+      }catch(error){
+        if(state.market)renderArbInsights([],'Live basis fallback');
+        else document.getElementById('arb-insight').innerHTML=`<p class="text-xs text-red">${safe(error.message)}</p>`;
+      }finally{button.disabled=false;button.textContent='RUN QWEN ARB SCAN';}
     }
 
     function setSimulationAsset(asset){
@@ -335,6 +405,7 @@
 
     document.getElementById('scan-btn').addEventListener('click',runAgent);
     document.getElementById('trade-btn').addEventListener('click',generateTrades);
+    document.getElementById('arb-scan-btn').addEventListener('click',runArbScan);
     document.getElementById('simulate-btn').addEventListener('click',runSimulation);
     document.querySelectorAll('.asset-tab').forEach((button)=>button.addEventListener('click',()=>setSimulationAsset(button.dataset.asset)));
     document.getElementById('sim-risk').addEventListener('input',(event)=>{document.getElementById('sim-risk-value').textContent=`${Number(event.target.value).toFixed(1)}%`;});
