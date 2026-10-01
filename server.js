@@ -48,7 +48,7 @@ function requestJSON(url, timeout = 12000) {
     const req = https.get({
       hostname: parsed.hostname,
       path: parsed.pathname + parsed.search,
-      headers: { "User-Agent": "WhalePulse-Equity/3.0", Accept: "application/json" },
+      headers: { "User-Agent": "WhalePulse-AI-v2/2.0", Accept: "application/json" },
     }, (res) => {
       let body = "";
       res.on("data", (chunk) => { body += chunk; });
@@ -99,7 +99,15 @@ async function fetchYahooSeries(symbol, range = "1mo", interval = "1d") {
   const data = await requestJSON(url);
   const chart = data?.chart?.result?.[0];
   if (!chart?.meta) throw new Error(`missing equity data for ${symbol}`);
-  const closes = (chart.indicators?.quote?.[0]?.close || []).filter(Number.isFinite);
+  const timestamps = chart.timestamp || [];
+  const rawCloses = chart.indicators?.quote?.[0]?.close || [];
+  const series = timestamps
+    .map((timestamp, index) => ({
+      day: new Date(Number(timestamp) * 1000).toISOString().slice(0, 10),
+      close: Number(rawCloses[index]),
+    }))
+    .filter((point) => Number.isFinite(point.close));
+  const closes = series.map((point) => point.close);
   return {
     symbol,
     price: Number(chart.meta.regularMarketPrice ?? closes.at(-1)),
@@ -108,6 +116,7 @@ async function fetchYahooSeries(symbol, range = "1mo", interval = "1d") {
       ? ((chart.meta.regularMarketPrice - chart.meta.chartPreviousClose) / chart.meta.chartPreviousClose) * 100
       : null,
     closes,
+    series,
   };
 }
 
@@ -116,20 +125,20 @@ async function fetchRTokenCloses(pair) {
   const data = await requestJSON(url);
   const rows = Array.isArray(data.data) ? data.data : [];
   return rows
-    .map((row) => ({ ts: Number(row[0]), close: Number(row[4]) }))
+    .map((row) => ({ ts: Number(row[0]), day: new Date(Number(row[0])).toISOString().slice(0, 10), close: Number(row[4]) }))
     .filter((row) => Number.isFinite(row.close))
-    .sort((a, b) => a.ts - b.ts)
-    .map((row) => row.close);
+    .sort((a, b) => a.ts - b.ts);
 }
 
 async function getMarketSnapshot(force = false) {
   if (!force && memory.market && Date.now() - memory.marketAt < 20000) return memory.market;
   const [rTokenResult, equityResult] = await Promise.allSettled([
     fetchRTokenPrices(),
-    Promise.all(RTOKENS.map((asset) => fetchYahooSeries(asset.stock))),
+    Promise.allSettled(RTOKENS.map((asset) => fetchYahooSeries(asset.stock))),
   ]);
   const rTokenRows = rTokenResult.status === "fulfilled" ? rTokenResult.value : RTOKENS.map((asset) => ({ ...asset, available: false }));
-  const equityRows = equityResult.status === "fulfilled" ? equityResult.value : [];
+  const equitySettled = equityResult.status === "fulfilled" ? equityResult.value : [];
+  const equityRows = equitySettled.filter((result) => result.status === "fulfilled").map((result) => result.value);
   const equities = new Map(equityRows.map((row) => [row.symbol, row]));
   const assets = rTokenRows.map((row) => {
     const equity = equities.get(row.stock);
@@ -149,21 +158,13 @@ async function getMarketSnapshot(force = false) {
     regime: nyMarketRegime(),
     sources: {
       bitget: rTokenResult.status === "fulfilled" ? "live" : "unavailable",
-      yahoo_finance: equityResult.status === "fulfilled" ? "live" : "unavailable",
+      yahoo_finance: equityRows.length === RTOKENS.length ? "live" : equityRows.length ? "partial" : "unavailable",
     },
     updated_at: new Date().toISOString(),
   };
   memory.market = snapshot;
   memory.marketAt = Date.now();
   return snapshot;
-}
-
-function returns(values) {
-  const output = [];
-  for (let i = 1; i < values.length; i += 1) {
-    if (values[i - 1]) output.push((values[i] - values[i - 1]) / values[i - 1]);
-  }
-  return output;
 }
 
 function pearson(left, right) {
@@ -187,15 +188,40 @@ function pearson(left, right) {
   return denominator ? Number((numerator / denominator).toFixed(3)) : null;
 }
 
+function alignedReturnPair(leftSeries, rightSeries) {
+  const leftByDay = new Map(leftSeries.map((point) => [point.day, point.close]));
+  const rightByDay = new Map(rightSeries.map((point) => [point.day, point.close]));
+  const days = [...leftByDay.keys()].filter((day) => rightByDay.has(day)).sort();
+  const left = [];
+  const right = [];
+  for (let index = 1; index < days.length; index += 1) {
+    const previousDay = days[index - 1];
+    const currentDay = days[index];
+    const previousLeft = leftByDay.get(previousDay);
+    const previousRight = rightByDay.get(previousDay);
+    if (!previousLeft || !previousRight) continue;
+    left.push((leftByDay.get(currentDay) - previousLeft) / previousLeft);
+    right.push((rightByDay.get(currentDay) - previousRight) / previousRight);
+  }
+  return { left, right };
+}
+
 async function getCorrelations() {
   if (memory.correlation && Date.now() - memory.correlationAt < 300000) return memory.correlation;
   const benchmarkResults = await Promise.allSettled([fetchYahooSeries("SPY"), fetchYahooSeries("QQQ")]);
-  const spyReturns = benchmarkResults[0].status === "fulfilled" ? returns(benchmarkResults[0].value.closes) : [];
-  const qqqReturns = benchmarkResults[1].status === "fulfilled" ? returns(benchmarkResults[1].value.closes) : [];
+  const spySeries = benchmarkResults[0].status === "fulfilled" ? benchmarkResults[0].value.series : [];
+  const qqqSeries = benchmarkResults[1].status === "fulfilled" ? benchmarkResults[1].value.series : [];
   const rows = await Promise.all(RTOKENS.map(async (asset) => {
     try {
-      const tokenReturns = returns(await fetchRTokenCloses(asset.pair));
-      return { label: asset.label, spy: pearson(tokenReturns, spyReturns), qqq: pearson(tokenReturns, qqqReturns), observations: tokenReturns.length };
+      const tokenSeries = await fetchRTokenCloses(asset.pair);
+      const spyPair = alignedReturnPair(tokenSeries, spySeries);
+      const qqqPair = alignedReturnPair(tokenSeries, qqqSeries);
+      return {
+        label: asset.label,
+        spy: pearson(spyPair.left, spyPair.right),
+        qqq: pearson(qqqPair.left, qqqPair.right),
+        observations: Math.min(spyPair.left.length, qqqPair.left.length),
+      };
     } catch {
       return { label: asset.label, spy: null, qqq: null, observations: 0 };
     }
@@ -212,7 +238,7 @@ function buildFlowIntelligence(market) {
   const byBasis = [...available].filter((asset) => Number.isFinite(asset.basis_pct)).sort((a, b) => Math.abs(b.basis_pct) - Math.abs(a.basis_pct));
   const events = [];
   if (byVolume[0]) events.push({
-    severity: "HIGH", asset: byVolume[0].label, type: "INSTITUTIONAL VOLUME",
+    severity: "HIGH", asset: byVolume[0].label, type: "VENUE VOLUME CONCENTRATION",
     detail: `${byVolume[0].label} leads the tracked rToken tape with $${Math.round(byVolume[0].volume_usd).toLocaleString("en-US")} in 24h quote volume.`,
   });
   byBasis.slice(0, 3).forEach((asset) => events.push({
@@ -263,7 +289,7 @@ function buildPaperTrades(market) {
         entry_price: Number(entry.toFixed(4)),
         stop_loss: Number(stop.toFixed(4)),
         take_profit: Number(target.toFixed(4)),
-        status: "PAPER",
+        status: "PAPER_INSIGHT",
         rationale: `${asset.basis_state} basis with ${market.regime.code.toLowerCase()} session controls.`,
       };
     });
@@ -281,7 +307,13 @@ function buildAgentEvents(market) {
       action: Math.abs(asset.basis_pct || 0) >= 0.5 ? "REVIEW_BASIS_TRADE" : "MONITOR",
       description: `${asset.label} moved ${asset.change_pct >= 0 ? "+" : ""}${asset.change_pct.toFixed(2)}% with ${asset.basis_state.toLowerCase()} basis.`,
     }));
-  return { state: events.some((event) => event.severity === "HIGH") ? "ALERT" : "SCANNING", events, next_scan_seconds: 45 };
+  return {
+    state: events.some((event) => event.severity === "HIGH") ? "REVIEW" : "SCANNING",
+    events,
+    next_scan_seconds: 45,
+    analysis_source: "deterministic_market_scan",
+    human_decision_required: true,
+  };
 }
 
 async function callAI(system, payload) {
@@ -317,11 +349,23 @@ async function callAI(system, payload) {
 
 async function getTradeDecisions(market) {
   const fallback = buildPaperTrades(market);
+  const fallbackResponse = (reason) => ({
+    decisions: fallback,
+    engine: "Deterministic research fallback",
+    analysis_source: "deterministic_fallback",
+    qwen_generated: false,
+    fallback_reason: reason,
+    paper_only: true,
+    human_decision_required: true,
+  });
   const ai = await callAI(
-    "You are an rToken paper-trading analyst for tokenized US stocks. Return JSON with a decisions array. Use ONLY rNVDA, rTSLA, rAAPL, rMSFT, rCOIN, or rAMZN. Maximum position 5%, maximum stop distance 3%, and never claim real execution.",
+    `You are the Qwen 3.8-Max research analyst inside WhalePulse AI v2, an AI-assisted tokenized-stock research workbench.
+Return JSON with a decisions array using ONLY rNVDA, rTSLA, rAAPL, rMSFT, rCOIN, or rAMZN.
+Each item must contain asset, side (LONG or SHORT), size_pct, entry_price, stop_loss, take_profit, and a concise rationale.
+Rules: maximum position 5%, maximum stop distance 3%, paper insight only, never claim execution, and state that a human trader makes the final decision.`,
     { regime: market.regime, assets: market.assets.filter((asset) => TRADE_UNIVERSE.has(asset.label)) },
   );
-  if (!Array.isArray(ai?.decisions)) return { decisions: fallback, engine: "rules-fallback", paper_only: true };
+  if (!Array.isArray(ai?.decisions)) return fallbackResponse(AI_KEY ? "qwen_unavailable_or_invalid" : "qwen_not_configured");
   const decisions = ai.decisions
     .filter((trade) => TRADE_UNIVERSE.has(String(trade.asset || "").replace(/^\$/, "")))
     .slice(0, 6)
@@ -330,24 +374,50 @@ async function getTradeDecisions(market) {
       const row = market.assets.find((item) => item.label === asset);
       const side = String(trade.side).toUpperCase() === "SHORT" ? "SHORT" : "LONG";
       const entry = Number(trade.entry_price) || row?.price;
+      if (!Number.isFinite(entry) || entry <= 0) return null;
       const proposedStop = Number(trade.stop_loss);
-      const stopLimit = side === "LONG" ? entry * 0.97 : entry * 1.03;
-      const stop = side === "LONG" ? Math.max(proposedStop || stopLimit, stopLimit) : Math.min(proposedStop || stopLimit, stopLimit);
-      return { ...trade, asset, pair: row?.pair, side, size_pct: Math.min(5, Math.max(0, Number(trade.size_pct) || 0)), entry_price: entry, stop_loss: stop, status: "PAPER" };
-    });
-  return { decisions: decisions.length ? decisions : fallback, engine: decisions.length ? "AI+risk-validator" : "rules-fallback", paper_only: true };
+      const proposedTarget = Number(trade.take_profit);
+      const defaultStop = side === "LONG" ? entry * 0.98 : entry * 1.02;
+      const stop = side === "LONG"
+        ? Math.max(Number.isFinite(proposedStop) && proposedStop < entry ? proposedStop : defaultStop, entry * 0.97)
+        : Math.min(Number.isFinite(proposedStop) && proposedStop > entry ? proposedStop : defaultStop, entry * 1.03);
+      const defaultTarget = side === "LONG" ? entry * 1.03 : entry * 0.97;
+      const target = side === "LONG"
+        ? Math.min(Number.isFinite(proposedTarget) && proposedTarget > entry ? proposedTarget : defaultTarget, entry * 1.1)
+        : Math.max(Number.isFinite(proposedTarget) && proposedTarget < entry ? proposedTarget : defaultTarget, entry * 0.9);
+      return {
+        ...trade,
+        asset,
+        pair: row?.pair,
+        side,
+        size_pct: Math.min(5, Math.max(0, Number(trade.size_pct) || 0)),
+        entry_price: Number(entry.toFixed(4)),
+        stop_loss: Number(stop.toFixed(4)),
+        take_profit: Number(target.toFixed(4)),
+        rationale: String(trade.rationale || "Qwen research insight; human review required.").slice(0, 240),
+        status: "PAPER_INSIGHT",
+      };
+    })
+    .filter(Boolean);
+  if (!decisions.length) return fallbackResponse("qwen_output_failed_validation");
+  return {
+    decisions,
+    engine: "Qwen 3.8-Max + deterministic risk validator",
+    analysis_source: "qwen_3_8_max",
+    qwen_generated: true,
+    paper_only: true,
+    human_decision_required: true,
+  };
 }
 
 function serveStatic(res, requestPath) {
   const pathname = new URL(requestPath, "http://localhost").pathname;
-  const relative = pathname === "/" ? "index.html" : pathname.replace(/^\/+/, "");
-  const file = path.resolve(__dirname, relative);
-  if (!file.startsWith(path.resolve(__dirname) + path.sep) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
+  if (pathname !== "/" && pathname !== "/index.html") {
     res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
     return res.end("Not found");
   }
-  const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json" };
-  res.writeHead(200, { "Content-Type": types[path.extname(file)] || "application/octet-stream" });
+  const file = path.resolve(__dirname, "index.html");
+  res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
   fs.createReadStream(file).pipe(res);
 }
 
@@ -356,9 +426,13 @@ const server = http.createServer(async (req, res) => {
     const pathname = new URL(req.url, "http://localhost").pathname;
     if (pathname === "/api/health" || pathname === "/health") {
       return sendJSON(res, {
+        ok: true,
         status: "ok",
-        track: "Bitget AI Hackathon Season 2 — Track 3: Tokenized Stocks",
+        service: "WhalePulse AI v2",
+        track: "Bitget AI Hackathon Season 2 — Track 3: AI Trading Desk",
+        product_role: "AI-assisted research workbench",
         ai_configured: Boolean(AI_KEY),
+        analysis_mode: AI_KEY ? "qwen_3_8_max" : "deterministic_fallback",
         universe: RTOKENS.map(({ label, stock }) => ({ label, stock })),
         regime: nyMarketRegime(),
       });
@@ -392,5 +466,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`[WhalePulse] Tokenized Stocks engine listening on ${PORT}`);
+  console.log(`[WhalePulse AI v2] Research workbench listening on ${PORT}`);
 });

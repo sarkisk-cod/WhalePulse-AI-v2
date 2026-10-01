@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>WhalePulse AI — Tokenized US Stocks Intelligence</title>
+  <title>WhalePulse AI v2 — AI-Assisted Tokenized-Stock Research</title>
+  <meta name="description" content="WhalePulse AI v2 is an AI-assisted rToken research workbench for Bitget AI Hackathon S2 Track 3. Paper-trade insights only; humans make final decisions.">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -30,21 +31,25 @@
     .arb-shell{background:radial-gradient(circle at 15% 20%,rgba(199,255,107,.08),transparent 28%),linear-gradient(135deg,#0c1d17,#07100d);border:1px solid rgba(199,255,107,.22)}
     .arb-card{background:rgba(5,14,11,.72);border:1px solid #1d4234;transition:.25s}.arb-card:hover{border-color:#78f2bd;transform:translateY(-2px)}
     .vol-dial{display:grid;place-items:center;width:84px;height:84px;border-radius:50%;position:relative;background:conic-gradient(#c7ff6b var(--vol),#132b22 0)}.vol-dial:after{content:"";position:absolute;inset:7px;border-radius:50%;background:#09150f}.vol-dial>span{position:relative;z-index:1}
+    .skip-link{position:fixed;left:1rem;top:-4rem;z-index:100;background:#c7ff6b;color:#07100d;padding:.65rem 1rem;font-weight:700}.skip-link:focus{top:1rem}
+    :focus-visible{outline:2px solid #c7ff6b;outline-offset:3px}
     input[type=range]{accent-color:#c7ff6b}
+    @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
   </style>
 </head>
 <body>
+  <a class="skip-link" href="#main-content">Skip to research workspace</a>
   <div class="fixed left-0 top-0 z-50 h-[2px] bg-mint" id="progress"></div>
   <header class="relative z-10 mx-auto max-w-7xl px-5 pb-12 pt-8 md:pt-14">
     <nav class="flex items-center justify-between border-b border-line pb-5">
-      <div class="display text-lg font-bold tracking-[.12em] text-white">WHALEPULSE <span class="text-mint">AI</span></div>
+      <div class="display text-lg font-bold tracking-[.12em] text-white">WHALEPULSE <span class="text-mint">AI v2</span></div>
       <div class="flex items-center gap-3"><span class="live"></span><span class="text-[.65rem] tracking-[.16em] text-mint">LIVE MARKET DATA</span></div>
     </nav>
     <div class="grid gap-10 pb-8 pt-16 md:grid-cols-[1fr_auto] md:items-end">
       <div>
-        <p class="eyebrow mb-4 text-xs text-lime">Bitget AI Hackathon Season 2 · Track 3</p>
-        <h1 class="display max-w-4xl text-4xl font-bold leading-[.98] text-white md:text-7xl">TOKENIZED US<br><span class="text-mint">STOCK INTELLIGENCE</span></h1>
-        <p class="mt-6 max-w-2xl text-sm leading-7 text-muted">An autonomous rToken research and paper-execution terminal for live basis discovery, institutional flow shifts, benchmark correlation, and US market regime analysis.</p>
+        <p class="eyebrow mb-4 text-xs text-lime">Bitget AI Hackathon Season 2 · Track 3: AI Trading Desk</p>
+        <h1 class="display max-w-4xl text-4xl font-bold leading-[.98] text-white md:text-7xl">TOKENIZED US<br><span class="text-mint">STOCK RESEARCH</span></h1>
+        <p class="mt-6 max-w-2xl text-sm leading-7 text-muted">WhalePulse AI v2 is an AI-assisted research workbench for live rToken basis, market-regime, flow, and correlation analysis. It produces research and paper-trade insights; human traders always make the final decision.</p>
       </div>
       <div class="panel min-w-[220px] rounded-sm p-5">
         <p class="eyebrow text-[.6rem] text-muted">New York Market</p>
@@ -53,37 +58,37 @@
       </div>
     </div>
   </header>
-  <main class="relative z-10">
+  <main class="relative z-10" id="main-content">
     <section class="mx-auto max-w-7xl px-5 pb-14" id="live-regime-simulator">
       <div class="regime-banner rounded-sm">
         <div class="flex flex-wrap items-center justify-between gap-5 border-b border-mint/15 px-6 py-4 md:px-8">
-          <div class="flex items-center gap-3"><span class="live"></span><p class="eyebrow text-[.65rem] text-mint">Live Market Regime</p><span class="badge" id="sim-regime">CONNECTING</span></div>
-          <p class="text-[.65rem] text-muted" id="sim-market-clock">New York session sync in progress…</p>
+          <div class="flex flex-wrap items-center gap-3"><span class="live"></span><p class="eyebrow text-[.65rem] text-mint">Live Market Regime</p><span class="badge" id="sim-regime">CONNECTING</span><span class="badge" id="ai-mode-badge">CHECKING ANALYSIS MODE</span></div>
+          <p class="text-[.65rem] text-muted" id="sim-market-clock" role="status">New York session sync in progress…</p>
         </div>
         <div class="grid lg:grid-cols-[.92fr_1.08fr]">
           <div class="border-b border-line p-6 md:p-8 lg:border-b-0 lg:border-r">
-            <p class="eyebrow text-[.62rem] text-lime">Interactive Qwen AI</p>
-            <h2 class="display mt-3 text-3xl font-bold leading-tight text-white md:text-4xl">TRADE<br>SIMULATOR</h2>
-            <p class="mt-4 max-w-md text-xs leading-6 text-muted">Stress-test a paper setup against live Bitget rToken pricing, US equity basis, and the active New York market regime.</p>
-            <div class="mt-7">
-              <label class="eyebrow text-[.58rem] text-muted">Select Stock-Native Asset</label>
-              <div class="mt-3 grid grid-cols-3 gap-2" id="sim-assets">
-                <button class="asset-tab active px-3 py-3 text-xs font-semibold" data-asset="rNVDA">$rNVDA</button>
-                <button class="asset-tab px-3 py-3 text-xs font-semibold" data-asset="rTSLA">$rTSLA</button>
-                <button class="asset-tab px-3 py-3 text-xs font-semibold" data-asset="rAAPL">$rAAPL</button>
+            <p class="eyebrow text-[.62rem] text-lime">Interactive Research Analyst</p>
+            <h2 class="display mt-3 text-3xl font-bold leading-tight text-white md:text-4xl">PAPER-TRADE<br>SIMULATOR</h2>
+            <p class="mt-4 max-w-md text-xs leading-6 text-muted">Stress-test a paper setup against live Bitget rToken pricing, US equity basis, and the active New York market regime. Qwen 3.8-Max is used when configured; otherwise results are explicitly labeled deterministic fallback.</p>
+            <fieldset class="mt-7">
+              <legend class="eyebrow text-[.58rem] text-muted">Select Stock-Native Asset</legend>
+              <div class="mt-3 grid grid-cols-3 gap-2" id="sim-assets" role="group" aria-label="Research asset">
+                <button type="button" class="asset-tab active px-3 py-3 text-xs font-semibold" data-asset="rNVDA" aria-pressed="true">$rNVDA</button>
+                <button type="button" class="asset-tab px-3 py-3 text-xs font-semibold" data-asset="rTSLA" aria-pressed="false">$rTSLA</button>
+                <button type="button" class="asset-tab px-3 py-3 text-xs font-semibold" data-asset="rAAPL" aria-pressed="false">$rAAPL</button>
               </div>
-            </div>
+            </fieldset>
             <div class="mt-5 grid grid-cols-2 gap-3">
-              <label class="text-[.62rem] text-muted">HORIZON<select class="sim-field mt-2 text-xs" id="sim-horizon"><option value="intraday">INTRADAY</option><option value="swing">2–5 DAY SWING</option><option value="position">POSITION</option></select></label>
-              <label class="text-[.62rem] text-muted">MAX RISK <span class="float-right text-lime" id="sim-risk-value">2.0%</span><input class="mt-4 w-full" id="sim-risk" type="range" min="0.5" max="5" step="0.5" value="2"></label>
+              <label class="text-[.62rem] text-muted" for="sim-horizon">HORIZON<select class="sim-field mt-2 text-xs" id="sim-horizon"><option value="intraday">INTRADAY</option><option value="swing">2–5 DAY SWING</option><option value="position">POSITION</option></select></label>
+              <label class="text-[.62rem] text-muted" for="sim-risk">MAX STOP <span class="float-right text-lime" id="sim-risk-value">2.0%</span><input class="mt-4 w-full" id="sim-risk" type="range" min="0.5" max="3" step="0.5" value="2" aria-describedby="sim-risk-value"></label>
             </div>
-            <button class="mt-6 w-full border border-lime/60 bg-lime px-5 py-3 text-xs font-bold tracking-[.14em] text-ink" id="simulate-btn">RUN QWEN SIMULATION</button>
+            <button type="button" class="mt-6 w-full border border-lime/60 bg-lime px-5 py-3 text-xs font-bold tracking-[.14em] text-ink" id="simulate-btn" aria-controls="sim-output">RUN RESEARCH SIMULATION</button>
           </div>
-          <div class="sim-output m-4 flex min-h-[390px] flex-col justify-center rounded-sm p-6 md:m-6 md:p-8" id="sim-output" aria-live="polite">
+          <div class="sim-output m-4 flex min-h-[390px] flex-col justify-center rounded-sm p-6 md:m-6 md:p-8" id="sim-output" aria-live="polite" aria-busy="false" role="status">
             <div id="sim-idle">
               <p class="eyebrow text-[.6rem] text-muted">Simulation Console</p>
               <p class="display mt-4 text-2xl font-semibold text-white">READY FOR $rNVDA</p>
-              <p class="mt-3 max-w-md text-xs leading-6 text-muted">Choose an asset and risk limit, then run the model. All outputs are hypothetical and paper-only.</p>
+              <p class="mt-3 max-w-md text-xs leading-6 text-muted">Choose an asset and risk limit, then run the research engine. All outputs are hypothetical, paper-only, and require a human decision.</p>
               <div class="mt-8 grid grid-cols-3 gap-3"><div class="h-20 skeleton rounded-sm"></div><div class="h-20 skeleton rounded-sm"></div><div class="h-20 skeleton rounded-sm"></div></div>
             </div>
           </div>
@@ -103,10 +108,10 @@
     <section class="mx-auto max-w-7xl px-5 py-14" id="agent">
       <div class="panel rounded-sm p-6 md:p-8">
         <div class="flex flex-wrap items-center justify-between gap-4">
-          <div><p class="eyebrow text-[.65rem] text-lime">Autonomous Agent</p><h2 class="display mt-2 text-2xl font-semibold text-white">rToken Event Scanner</h2><p class="mt-2 text-xs text-muted">Price moves · basis dislocations · NY session controls</p></div>
-          <button class="border border-mint/40 bg-mint/5 px-5 py-3 text-xs font-semibold tracking-[.12em] text-mint" id="scan-btn">RUN AGENT SCAN</button>
+          <div><p class="eyebrow text-[.65rem] text-lime">AI-Assisted Analysis</p><h2 class="display mt-2 text-2xl font-semibold text-white">rToken Event Review</h2><p class="mt-2 text-xs text-muted">Price moves · basis dislocations · NY session controls · human review required</p></div>
+          <button type="button" class="border border-mint/40 bg-mint/5 px-5 py-3 text-xs font-semibold tracking-[.12em] text-mint" id="scan-btn" aria-controls="agent-results">ANALYZE EVENTS</button>
         </div>
-        <div class="mt-6 grid gap-3 md:grid-cols-2" id="agent-results"><p class="text-sm text-muted">Agent ready. Run a scan to inspect the current rToken tape.</p></div>
+        <div class="mt-6 grid gap-3 md:grid-cols-2" id="agent-results" aria-live="polite"><p class="text-sm text-muted">Research scanner ready. Analyze the current rToken tape when you choose.</p></div>
       </div>
     </section>
 
@@ -116,7 +121,7 @@
         <span class="badge" id="basis-regime">NY REGIME: —</span>
       </div>
       <div class="panel overflow-x-auto rounded-sm">
-        <table><thead><tr><th>rToken</th><th>Bitget Price</th><th>US Equity</th><th>Equity Price</th><th>24h Move</th><th>Basis</th><th>State</th></tr></thead><tbody id="basis-body"></tbody></table>
+        <table><caption class="sr-only">Live Bitget rToken prices compared with US equity reference prices</caption><thead><tr><th scope="col">rToken</th><th scope="col">Bitget Price</th><th scope="col">US Equity</th><th scope="col">Equity Price</th><th scope="col">24h Move</th><th scope="col">Basis</th><th scope="col">State</th></tr></thead><tbody id="basis-body"></tbody></table>
       </div>
     </section>
     <section class="mx-auto max-w-7xl px-5 py-14" id="flow">
@@ -127,7 +132,7 @@
     <section class="mx-auto max-w-7xl px-5 py-14" id="correlation">
       <div class="mb-7"><p class="eyebrow text-[.65rem] text-lime">Cross-Market Risk</p><h2 class="display mt-2 text-2xl font-semibold text-white">EQUITY &amp; rTOKEN CORRELATION MONITOR</h2><p class="mt-2 text-xs text-muted">Rolling daily-return relationships between SPY / QQQ and the Bitget rToken universe</p></div>
       <div class="panel overflow-x-auto rounded-sm">
-        <table><thead><tr><th>Asset</th><th>SPY Correlation</th><th>QQQ Correlation</th><th>Benchmark Tilt</th><th>Window</th></tr></thead><tbody id="correlation-body"></tbody></table>
+        <table><caption class="sr-only">Timestamp-aligned daily return correlations between rTokens and SPY or QQQ</caption><thead><tr><th scope="col">Asset</th><th scope="col">SPY Correlation</th><th scope="col">QQQ Correlation</th><th scope="col">Benchmark Tilt</th><th scope="col">Window</th></tr></thead><tbody id="correlation-body"></tbody></table>
       </div>
     </section>
 
@@ -142,41 +147,42 @@
     <section class="mx-auto max-w-7xl px-5 py-14" id="architecture">
       <div class="mb-7"><p class="eyebrow text-[.65rem] text-lime">System Design</p><h2 class="display mt-2 text-2xl font-semibold text-white">ARCHITECTURE &amp; DATA SOURCES</h2></div>
       <div class="grid gap-3 md:grid-cols-4">
-        <div class="panel rounded-sm p-5"><p class="eyebrow text-[.6rem] text-mint">01 · Ingest</p><h3 class="display mt-3 text-lg text-white">Market Data</h3><div class="section-rule my-4"></div><p class="text-xs leading-6 text-muted">Yahoo Finance API<br>Bitget rToken Spot API<br>US Macro &amp; Equity Data</p></div>
-        <div class="panel rounded-sm p-5"><p class="eyebrow text-[.6rem] text-mint">02 · Detect</p><h3 class="display mt-3 text-lg text-white">Signal Layer</h3><div class="section-rule my-4"></div><p class="text-xs leading-6 text-muted">Basis Scanner<br>Volume Shift Engine<br>Correlation Monitor</p></div>
-        <div class="panel rounded-sm p-5"><p class="eyebrow text-[.6rem] text-mint">03 · Reason</p><h3 class="display mt-3 text-lg text-white">AI Analyst</h3><div class="section-rule my-4"></div><p class="text-xs leading-6 text-muted">Event Classification<br>Market Regime Filter<br>Risk Validation</p></div>
-        <div class="panel rounded-sm p-5"><p class="eyebrow text-[.6rem] text-mint">04 · Execute</p><h3 class="display mt-3 text-lg text-white">Paper Engine</h3><div class="section-rule my-4"></div><p class="text-xs leading-6 text-muted">rToken-Only Universe<br>Position Controls<br>Audit Log</p></div>
+        <div class="panel rounded-sm p-5"><p class="eyebrow text-[.6rem] text-mint">01 · Ask + Ingest</p><h3 class="display mt-3 text-lg text-white">Trader Question &amp; Data</h3><div class="section-rule my-4"></div><p class="text-xs leading-6 text-muted">Bitget rToken Spot API<br>Yahoo Finance Equity Reference<br>New York Market Clock</p></div>
+        <div class="panel rounded-sm p-5"><p class="eyebrow text-[.6rem] text-mint">02 · Analyze</p><h3 class="display mt-3 text-lg text-white">Basis &amp; Regime</h3><div class="section-rule my-4"></div><p class="text-xs leading-6 text-muted">Basis Scanner<br>Venue Volume Context<br>Timestamp-Aligned Correlation</p></div>
+        <div class="panel rounded-sm p-5"><p class="eyebrow text-[.6rem] text-mint">03 · Reason</p><h3 class="display mt-3 text-lg text-white">Qwen Research</h3><div class="section-rule my-4"></div><p class="text-xs leading-6 text-muted">Qwen 3.8-Max When Configured<br>Labeled Deterministic Fallback<br>No Execution Claims</p></div>
+        <div class="panel rounded-sm p-5"><p class="eyebrow text-[.6rem] text-mint">04 · Validate + Decide</p><h3 class="display mt-3 text-lg text-white">Risk &amp; Human Review</h3><div class="section-rule my-4"></div><p class="text-xs leading-6 text-muted">5% Position Cap<br>3% Stop-Distance Cap<br>Human Makes Final Decision</p></div>
       </div>
+      <p class="mt-5 border-l-2 border-mint bg-mint/[.03] p-4 text-xs leading-6 text-muted"><span class="text-white">Research flow:</span> Trader question → Bitget rToken and US equity data → basis and market-regime analysis → Qwen reasoning or labeled fallback → risk validation → actionable paper insight → human decision.</p>
     </section>
 
     <section class="mx-auto max-w-7xl px-5 py-14" id="institutional-radar">
       <div class="arb-shell overflow-hidden rounded-sm">
         <div class="flex flex-wrap items-end justify-between gap-5 border-b border-lime/15 px-6 py-6 md:px-8">
-          <div><p class="eyebrow text-[.65rem] text-lime">Cross-Venue Intelligence</p><h2 class="display mt-2 text-2xl font-semibold text-white md:text-3xl">INSTITUTIONAL ARBITRAGE &amp; VOLATILITY RADAR</h2><p class="mt-2 text-xs text-muted">Bitget rToken pricing versus US equity reference venues · powered by Qwen 3.8-Max</p></div>
-          <button class="border border-lime/50 bg-lime/10 px-5 py-3 text-xs font-semibold tracking-[.12em] text-lime" id="arb-scan-btn">RUN QWEN ARB SCAN</button>
+          <div><p class="eyebrow text-[.65rem] text-lime">Cross-Venue Intelligence</p><h2 class="display mt-2 text-2xl font-semibold text-white md:text-3xl">INSTITUTIONAL ARBITRAGE &amp; VOLATILITY RADAR</h2><p class="mt-2 text-xs text-muted">Bitget rToken pricing versus US equity references · Qwen-enabled analysis with clearly labeled fallback</p></div>
+          <button type="button" class="border border-lime/50 bg-lime/10 px-5 py-3 text-xs font-semibold tracking-[.12em] text-lime" id="arb-scan-btn" aria-controls="arb-insight">RUN RESEARCH SCAN</button>
         </div>
         <div class="grid gap-4 p-6 md:grid-cols-2 md:p-8" id="arb-assets">
           <div class="arb-card h-64 skeleton rounded-sm"></div><div class="arb-card h-64 skeleton rounded-sm"></div>
         </div>
         <div class="border-t border-line bg-black/10 px-6 py-5 md:px-8">
-          <div class="flex flex-wrap items-center justify-between gap-3"><p class="eyebrow text-[.6rem] text-mint">Qwen 3.8-Max Convergence Desk</p><span class="badge" id="arb-regime">REGIME: —</span></div>
-          <div class="mt-4 grid gap-3 md:grid-cols-2" id="arb-insight"><p class="text-xs leading-6 text-muted">Live basis data is loading. Run the scan for model-generated paper convergence postures.</p></div>
+          <div class="flex flex-wrap items-center justify-between gap-3"><p class="eyebrow text-[.6rem] text-mint">AI-Assisted Convergence Research</p><span class="badge" id="arb-regime">REGIME: —</span></div>
+          <div class="mt-4 grid gap-3 md:grid-cols-2" id="arb-insight" aria-live="polite"><p class="text-xs leading-6 text-muted">Live basis data is loading. Run the scan for paper convergence research.</p></div>
         </div>
       </div>
     </section>
 
     <section class="mx-auto max-w-7xl px-5 py-14" id="trades">
       <div class="mb-7 flex flex-wrap items-end justify-between gap-4">
-        <div><p class="eyebrow text-[.65rem] text-lime">Paper Execution</p><h2 class="display mt-2 text-2xl font-semibold text-white">AUTONOMOUS TRADE LOG</h2><p class="mt-2 text-xs text-muted">Restricted to $rNVDA, $rTSLA, $rAAPL, $rMSFT, $rCOIN, and $rAMZN</p></div>
-        <button class="border border-mint/40 bg-mint/5 px-5 py-3 text-xs font-semibold tracking-[.12em] text-mint" id="trade-btn">GENERATE PAPER TRADES</button>
+        <div><p class="eyebrow text-[.65rem] text-lime">Paper Research</p><h2 class="display mt-2 text-2xl font-semibold text-white">AI-ASSISTED PAPER INSIGHT LOG</h2><p class="mt-2 text-xs text-muted">Restricted to $rNVDA, $rTSLA, $rAAPL, $rMSFT, $rCOIN, and $rAMZN · human decision required</p></div>
+        <button type="button" class="border border-mint/40 bg-mint/5 px-5 py-3 text-xs font-semibold tracking-[.12em] text-mint" id="trade-btn" aria-controls="trade-body">GENERATE PAPER INSIGHTS</button>
       </div>
-      <div class="panel overflow-x-auto rounded-sm"><table><thead><tr><th>Time</th><th>Asset</th><th>Side</th><th>Size</th><th>Entry</th><th>Stop</th><th>Target</th><th>Rationale</th><th>Status</th></tr></thead><tbody id="trade-body"></tbody></table></div>
-      <p class="mt-3 text-[.65rem] text-muted" id="trade-engine">Paper trading only. No orders are transmitted.</p>
+      <div class="panel overflow-x-auto rounded-sm"><table><caption class="sr-only">AI-assisted paper-trade research insights requiring human review</caption><thead><tr><th scope="col">Time</th><th scope="col">Asset</th><th scope="col">Side</th><th scope="col">Size</th><th scope="col">Entry</th><th scope="col">Stop</th><th scope="col">Target</th><th scope="col">Rationale</th><th scope="col">Status</th></tr></thead><tbody id="trade-body"></tbody></table></div>
+      <p class="mt-3 text-[.65rem] text-muted" id="trade-engine" role="status">Paper trading only. No orders are transmitted. Human traders make final decisions.</p>
     </section>
   </main>
-  <footer class="relative z-10 mt-12 border-t border-line px-5 py-10 text-center"><p class="eyebrow text-[.6rem] text-muted">WhalePulse AI · Bitget AI Hackathon Season 2 · Track 3: Tokenized Stocks · Paper Trading Only</p></footer>
+  <footer class="relative z-10 mt-12 border-t border-line px-5 py-10 text-center"><p class="eyebrow text-[.6rem] text-muted">WhalePulse AI v2 · Bitget AI Hackathon Season 2 · Track 3: AI Trading Desk · Paper Trading Only · Human Decision Required</p></footer>
   <script>
-    const state={market:null,simAsset:'rNVDA'};
+    const state={market:null,simAsset:'rNVDA',analysisMode:'checking'};
     const money=(value)=>Number.isFinite(value)?'$'+Number(value).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:4}):'—';
     const percent=(value)=>Number.isFinite(value)?`${value>=0?'+':''}${value.toFixed(2)}%`:'—';
     const tone=(value)=>!Number.isFinite(value)?'text-muted':value>=0?'text-mint':'text-red';
@@ -198,6 +204,21 @@
         }finally{clearTimeout(timer);}
       }
       throw new Error(lastError?.name==='AbortError'?'Live request timed out':lastError?.message||'Live request unavailable');
+    }
+
+    async function loadHealth(){
+      const badge=document.getElementById('ai-mode-badge');
+      try{
+        const response=await fetch('/api/health',{headers:{Accept:'application/json'}});
+        const health=await response.json();
+        state.analysisMode=health.analysis_mode||'deterministic_fallback';
+        badge.textContent=state.analysisMode==='qwen_3_8_max'?'QWEN 3.8-MAX READY':'DETERMINISTIC FALLBACK';
+        badge.className=state.analysisMode==='qwen_3_8_max'?'badge !border-mint !text-mint':'badge !border-gold !text-gold';
+      }catch{
+        state.analysisMode='unavailable';
+        badge.textContent='ANALYSIS STATUS UNAVAILABLE';
+        badge.className='badge !border-red !text-red';
+      }
     }
 
     function renderPlaceholders(){
@@ -290,78 +311,87 @@
     }
 
     async function runAgent(){
-      const button=document.getElementById('scan-btn');button.disabled=true;button.textContent='SCANNING…';
+      const button=document.getElementById('scan-btn');button.disabled=true;button.textContent='ANALYZING…';
       try{
         const data=await api('/api/agent-events');
         document.getElementById('agent-results').innerHTML=data.events.map((event)=>`
           <article class="border-l-2 border-mint bg-mint/[.03] p-4"><div class="flex items-center justify-between gap-3"><p class="display font-semibold text-white">$${safe(event.asset)}</p><span class="badge">${safe(event.severity)}</span></div><p class="mt-2 text-xs leading-5 text-muted">${safe(event.description)}</p><p class="mt-3 text-[.62rem] tracking-wider text-lime">${safe(event.action)}</p></article>`).join('')||'<p class="text-sm text-muted">No significant rToken events detected.</p>';
       }catch(error){document.getElementById('agent-results').innerHTML=`<p class="text-sm text-red">${safe(error.message)}</p>`;}
-      finally{button.disabled=false;button.textContent='RUN AGENT SCAN';}
+      finally{button.disabled=false;button.textContent='ANALYZE EVENTS';}
     }
 
     async function generateTrades(){
-      const button=document.getElementById('trade-btn');button.disabled=true;button.textContent='GENERATING…';
+      const button=document.getElementById('trade-btn');button.disabled=true;button.textContent='GENERATING RESEARCH…';
       try{
         const data=await api('/api/trade-decisions');
         document.getElementById('trade-body').innerHTML=data.decisions.map((trade)=>`
-          <tr><td class="text-muted">${new Date(trade.time||Date.now()).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</td><td class="font-semibold text-white">$${safe(trade.asset)}</td><td class="${trade.side==='LONG'?'text-mint':'text-red'}">${safe(trade.side)}</td><td>${Number(trade.size_pct||0).toFixed(1)}%</td><td>${money(trade.entry_price)}</td><td class="text-red">${money(trade.stop_loss)}</td><td class="text-lime">${money(trade.take_profit)}</td><td class="max-w-[300px] whitespace-normal text-muted">${safe(trade.rationale)}</td><td><span class="badge">PAPER</span></td></tr>`).join('')||'<tr><td colspan="9" class="py-8 text-center text-muted">No eligible rToken setup is available.</td></tr>';
-        document.getElementById('trade-engine').textContent=`Engine: ${data.engine} · Risk-validated · Paper trading only · No orders transmitted`;
+          <tr><td class="text-muted">${new Date(trade.time||Date.now()).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</td><td class="font-semibold text-white">$${safe(trade.asset)}</td><td class="${trade.side==='LONG'?'text-mint':'text-red'}">${safe(trade.side)}</td><td>${Number(trade.size_pct||0).toFixed(1)}%</td><td>${money(trade.entry_price)}</td><td class="text-red">${money(trade.stop_loss)}</td><td class="text-lime">${money(trade.take_profit)}</td><td class="max-w-[300px] whitespace-normal text-muted">${safe(trade.rationale)}</td><td><span class="badge">PAPER INSIGHT</span></td></tr>`).join('')||'<tr><td colspan="9" class="py-8 text-center text-muted">No eligible rToken research setup is available.</td></tr>';
+        const source=data.qwen_generated?'GENUINE QWEN 3.8-MAX OUTPUT':'DETERMINISTIC FALLBACK';
+        document.getElementById('trade-engine').textContent=`${source} · ${data.engine} · Risk-validated · Paper trading only · Human decision required`;
       }catch(error){document.getElementById('trade-body').innerHTML=`<tr><td colspan="9" class="py-8 text-center text-red">${safe(error.message)}</td></tr>`;}
-      finally{button.disabled=false;button.textContent='GENERATE PAPER TRADES';}
+      finally{button.disabled=false;button.textContent='GENERATE PAPER INSIGHTS';}
     }
 
-    function renderArbInsights(decisions,engine){
+    function renderArbInsights(decisions,metadata={}){
       const radarAssets=(state.market?.assets||[]).filter((asset)=>['rNVDA','rTSLA'].includes(asset.label));
       document.getElementById('arb-insight').innerHTML=radarAssets.map((asset)=>{
         const trade=decisions.find((item)=>String(item.asset||'').replace(/^\$/,'')===asset.label)||{};
         const basisBps=Number.isFinite(asset.basis_pct)?asset.basis_pct*100:null;
         const side=trade.side||(!Number.isFinite(basisBps)?'WATCH':basisBps>50?'SHORT':basisBps<-50?'LONG':'WATCH');
-        const action=side==='LONG'?'ACCUMULATE rTOKEN LEG':side==='SHORT'?'HEDGE rTOKEN LEG':'WAIT FOR WIDER BASIS';
+        const action=side==='LONG'?'RESEARCH LONG rTOKEN LEG':side==='SHORT'?'RESEARCH HEDGE rTOKEN LEG':'WAIT FOR WIDER BASIS';
         const rationale=trade.rationale||`${asset.basis_state} cross-venue basis under the ${state.market.regime.code.toLowerCase()} New York regime.`;
         return `<div class="border-l-2 ${side==='LONG'?'border-mint':side==='SHORT'?'border-red':'border-gold'} bg-white/[.02] p-4"><div class="flex items-center justify-between gap-3"><p class="display font-semibold text-white">$${safe(asset.label)}</p><span class="badge">${safe(side)}</span></div><p class="mt-3 text-[.62rem] tracking-wider text-lime">${action}</p><p class="mt-2 text-xs leading-5 text-muted">${safe(rationale)}</p></div>`;
       }).join('');
-      document.getElementById('arb-regime').textContent=`${safe(engine)} · ${state.market?.regime.code||'LIVE'}`;
+      const source=metadata.qwen_generated?'QWEN 3.8-MAX':'DETERMINISTIC FALLBACK';
+      document.getElementById('arb-regime').textContent=`${source} · ${state.market?.regime.code||'LIVE'}`;
     }
 
     async function runArbScan(){
       const button=document.getElementById('arb-scan-btn');
       button.disabled=true;button.textContent='SCANNING VENUES…';
-      document.getElementById('arb-insight').innerHTML='<p class="text-xs text-mint">Qwen is comparing rToken basis, volatility, liquidity, and New York regime controls…</p>';
+      document.getElementById('arb-insight').innerHTML='<p class="text-xs text-mint">Research engine is comparing rToken basis, volatility, liquidity, and New York regime controls…</p>';
       try{
         if(!state.market)await loadMarket();
         const data=await api('/api/trade-decisions');
-        renderArbInsights(data.decisions||[],data.engine||'Qwen 3.8-Max');
+        renderArbInsights(data.decisions||[],data);
       }catch(error){
-        if(state.market)renderArbInsights([],'Live basis fallback');
+        if(state.market)renderArbInsights([],{qwen_generated:false,engine:'Live basis fallback'});
         else document.getElementById('arb-insight').innerHTML=`<p class="text-xs text-red">${safe(error.message)}</p>`;
-      }finally{button.disabled=false;button.textContent='RUN QWEN ARB SCAN';}
+      }finally{button.disabled=false;button.textContent='RUN RESEARCH SCAN';}
     }
 
     function setSimulationAsset(asset){
       state.simAsset=asset;
-      document.querySelectorAll('.asset-tab').forEach((button)=>button.classList.toggle('active',button.dataset.asset===asset));
+      document.querySelectorAll('.asset-tab').forEach((button)=>{
+        const selected=button.dataset.asset===asset;
+        button.classList.toggle('active',selected);
+        button.setAttribute('aria-pressed',String(selected));
+      });
       const idle=document.querySelector('#sim-idle .display');
       if(idle)idle.textContent=`READY FOR $${asset}`;
     }
 
-    function renderSimulation(trade,engine){
+    function renderSimulation(trade,metadata={}){
       const marketAsset=state.market?.assets.find((asset)=>asset.label===state.simAsset);
       const horizon=document.getElementById('sim-horizon').value;
       const risk=Number(document.getElementById('sim-risk').value);
       const entry=Number(trade.entry_price)||marketAsset?.price;
       const side=String(trade.side||((marketAsset?.basis_pct||0)>0.5?'SHORT':'LONG')).toUpperCase()==='SHORT'?'SHORT':'LONG';
-      const stopDistance=entry*0.02;
+      const stopDistance=entry*(Math.min(risk,3)/100);
       const horizonFactor={intraday:1,swing:1.5,position:2}[horizon];
-      const stop=Number(trade.stop_loss)||(side==='LONG'?entry-stopDistance:entry+stopDistance);
+      const proposedStop=Number(trade.stop_loss);
+      const stop=side==='LONG'
+        ?Math.max(Number.isFinite(proposedStop)&&proposedStop<entry?proposedStop:entry-stopDistance,entry-stopDistance)
+        :Math.min(Number.isFinite(proposedStop)&&proposedStop>entry?proposedStop:entry+stopDistance,entry+stopDistance);
       const target=Number(trade.take_profit)||(side==='LONG'?entry+stopDistance*1.5*horizonFactor:entry-stopDistance*1.5*horizonFactor);
       const reward=Math.abs(target-entry),loss=Math.abs(entry-stop);
       const ratio=loss?reward/loss:0;
       const basis=marketAsset?.basis_pct;
-      const confidence=Math.min(94,Math.round(68+Math.abs(basis||0)*8));
+      const source=metadata.qwen_generated?'GENUINE QWEN 3.8-MAX':'DETERMINISTIC FALLBACK';
       document.getElementById('sim-output').innerHTML=`
         <div class="flex flex-wrap items-start justify-between gap-4">
-          <div><p class="eyebrow text-[.6rem] text-muted">Qwen Simulation Output</p><h3 class="display mt-2 text-3xl font-bold text-white">$${safe(state.simAsset)}</h3></div>
-          <div class="text-right"><span class="badge ${side==='LONG'?'!border-mint !text-mint':'!border-red !text-red'}">${side}</span><p class="mt-2 text-[.6rem] text-muted">${confidence}% MODEL CONFIDENCE</p></div>
+          <div><p class="eyebrow text-[.6rem] text-muted">Paper Research Output</p><h3 class="display mt-2 text-3xl font-bold text-white">$${safe(state.simAsset)}</h3></div>
+          <div class="text-right"><span class="badge ${side==='LONG'?'!border-mint !text-mint':'!border-red !text-red'}">${side}</span><p class="mt-2 text-[.6rem] text-muted">${source}</p></div>
         </div>
         <div class="mt-7 grid grid-cols-3 gap-3">
           <div class="border border-line bg-black/10 p-3"><p class="text-[.58rem] text-muted">ENTRY</p><p class="display mt-2 text-lg text-white">${money(entry)}</p></div>
@@ -370,16 +400,18 @@
         </div>
         <div class="mt-6 grid gap-3 sm:grid-cols-2">
           <div><p class="text-[.58rem] text-muted">LIVE BASIS</p><p class="mt-1 text-sm ${tone(basis)}">${percent(basis)} · ${safe(marketAsset?.basis_state)}</p></div>
-          <div><p class="text-[.58rem] text-muted">SIMULATION PROFILE</p><p class="mt-1 text-sm text-white">${safe(horizon.toUpperCase())} · ${risk.toFixed(1)}% max risk · ${ratio.toFixed(2)}R</p></div>
+          <div><p class="text-[.58rem] text-muted">SIMULATION PROFILE</p><p class="mt-1 text-sm text-white">${safe(horizon.toUpperCase())} · ${risk.toFixed(1)}% stop cap · ${ratio.toFixed(2)}R</p></div>
         </div>
         <div class="mt-6 border-l-2 border-mint bg-mint/[.04] p-4"><p class="text-[.58rem] tracking-wider text-mint">MODEL RATIONALE</p><p class="mt-2 text-xs leading-6 text-muted">${safe(trade.rationale||`${marketAsset?.basis_state||'Aligned'} basis evaluated under the ${state.market?.regime.code||'current'} New York regime.`)}</p></div>
-        <p class="mt-5 text-[.58rem] text-muted">${safe(engine)} · Hypothetical paper scenario · No order transmitted</p>`;
+        <p class="mt-5 text-[.58rem] text-muted">${safe(metadata.engine||source)} · Hypothetical paper insight · No order transmitted · Human decision required</p>`;
+      document.getElementById('sim-output').setAttribute('aria-busy','false');
     }
 
     async function runSimulation(){
       const button=document.getElementById('simulate-btn');
-      button.disabled=true;button.textContent='QWEN IS SIMULATING…';
-      document.getElementById('sim-output').innerHTML='<div class="text-center"><span class="live mx-auto block"></span><p class="eyebrow mt-5 text-xs text-mint">Analyzing live price · basis · regime</p><p class="mt-3 text-xs text-muted">Building a risk-controlled paper scenario…</p></div>';
+      button.disabled=true;button.textContent='ANALYZING…';
+      document.getElementById('sim-output').setAttribute('aria-busy','true');
+      document.getElementById('sim-output').innerHTML='<div class="text-center"><span class="live mx-auto block"></span><p class="eyebrow mt-5 text-xs text-mint">Analyzing live price · basis · regime</p><p class="mt-3 text-xs text-muted">Building a risk-controlled paper research scenario…</p></div>';
       try{
         if(!state.market)await loadMarket();
         const data=await api('/api/trade-decisions');
@@ -390,17 +422,17 @@
           const side=(asset.basis_pct||0)>0.5?'SHORT':'LONG';
           trade={asset:asset.label,side,entry_price:asset.price,rationale:`${asset.basis_state} basis evaluated against ${asset.stock} during ${state.market.regime.code}.`};
         }
-        renderSimulation(trade,data.engine||'Qwen AI + risk validator');
+        renderSimulation(trade,data);
       }catch(error){
         const asset=state.market?.assets.find((item)=>item.label===state.simAsset);
         if(asset?.price){
           const side=(asset.basis_pct||0)>0.5?'SHORT':'LONG';
-          renderSimulation({asset:asset.label,side,entry_price:asset.price,rationale:`Live ${asset.basis_state.toLowerCase()} basis evaluated against ${asset.stock}; AI request fallback activated after: ${error.message}.`},'Live market risk fallback');
+          renderSimulation({asset:asset.label,side,entry_price:asset.price,rationale:`Live ${asset.basis_state.toLowerCase()} basis evaluated against ${asset.stock}; research fallback activated after: ${error.message}.`},{qwen_generated:false,engine:'Live market risk fallback'});
         }else{
-          document.getElementById('sim-output').innerHTML=`<div><p class="eyebrow text-[.6rem] text-red">Simulation unavailable</p><p class="mt-4 text-sm text-white">${safe(error.message)}</p><button class="mt-5 border border-mint/40 px-4 py-2 text-xs text-mint" onclick="runSimulation()">RETRY LIVE CONNECTION</button></div>`;
+          document.getElementById('sim-output').innerHTML=`<div><p class="eyebrow text-[.6rem] text-red">Simulation unavailable</p><p class="mt-4 text-sm text-white">${safe(error.message)}</p><button type="button" class="mt-5 border border-mint/40 px-4 py-2 text-xs text-mint" onclick="runSimulation()">RETRY LIVE CONNECTION</button></div>`;
         }
       }
-      finally{button.disabled=false;button.textContent='RUN QWEN SIMULATION';}
+      finally{button.disabled=false;button.textContent='RUN RESEARCH SIMULATION';document.getElementById('sim-output').setAttribute('aria-busy','false');}
     }
 
     document.getElementById('scan-btn').addEventListener('click',runAgent);
@@ -411,7 +443,7 @@
     document.getElementById('sim-risk').addEventListener('input',(event)=>{document.getElementById('sim-risk-value').textContent=`${Number(event.target.value).toFixed(1)}%`;});
     window.addEventListener('scroll',()=>{const root=document.documentElement;document.getElementById('progress').style.width=`${root.scrollTop/(root.scrollHeight-root.clientHeight)*100}%`;});
     renderPlaceholders();
-    Promise.allSettled([loadMarket(),loadFlow(),loadCorrelations(),loadSentiment(),generateTrades()]);
+    Promise.allSettled([loadHealth(),loadMarket(),loadFlow(),loadCorrelations(),loadSentiment()]);
     setInterval(()=>{loadMarket();loadFlow();loadSentiment();},30000);
   </script>
 </body>

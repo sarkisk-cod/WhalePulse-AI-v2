@@ -1,6 +1,7 @@
 {
-  "name": "whalepulse-ai",
-  "version": "0.3.0",
+  "name": "whalepulse-ai-v2",
+  "version": "2.0.0",
+  "description": "AI-assisted rToken and US-equity research workbench for Bitget AI Hackathon S2 Track 3",
   "private": true,
   "scripts": {
     "start": "node server.js",
