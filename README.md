@@ -2,7 +2,7 @@
 
 **AI-assisted tokenized-stock research workbench for Bitget AI Hackathon Season 2 — Track 3: AI Trading Desk.**
 
-[Live app](https://cpmcacza.mule.page/) · [Source code](https://github.com/sarkisk-cod/WhalePulse-AI-v2) · Demo video: **pending**
+[Live app](https://cpmcacza.mule.page/) · [Demo video](https://youtu.be/alT6HxhQizY?si=OXDV0m3wdvWTkmFL) · [Source code](https://github.com/sarkisk-cod/WhalePulse-AI-v2)
 
 > **Paper trading only.** WhalePulse AI v2 produces research and hypothetical paper-trade insights. It does not place orders, provide financial advice, or replace trader judgment. A human trader always makes the final decision.
 
