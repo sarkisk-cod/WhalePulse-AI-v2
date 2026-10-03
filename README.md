@@ -2,7 +2,7 @@
 
 **AI-assisted tokenized-stock research workbench for Bitget AI Hackathon Season 2 — Track 3: AI Trading Desk.**
 
-[Live app](https://cpmcacza.mule.page/) · [Demo video](https://youtu.be/alT6HxhQizY?si=OXDV0m3wdvWTkmFL) · [Source code](https://github.com/sarkisk-cod/WhalePulse-AI-v2)
+[Live app](https://cpmcacza.mule.page/) · [Demo video](https://youtu.be/alT6HxhQizY) · [Source code](https://github.com/sarkisk-cod/WhalePulse-AI-v2)
 
 > **Paper trading only.** WhalePulse AI v2 produces research and hypothetical paper-trade insights. It does not place orders, provide financial advice, or replace trader judgment. A human trader always makes the final decision.
 
@@ -58,6 +58,8 @@ No credentials are sent to the browser. Qwen credentials, when configured, remai
 When a server-side Qwen key is configured, the research endpoint requests a structured set of paper insights from Qwen 3.8-Max. The server then enforces the asset whitelist and risk limits before returning results.
 
 When Qwen is not configured, unavailable, or returns invalid output, the endpoint uses a deterministic market-rule fallback. Responses expose `analysis_source`, `qwen_generated`, and `fallback_reason`, and the interface labels genuine Qwen output separately from fallback output. A fallback result must never be represented as Qwen-generated.
+
+Every `/api/trade-decisions` response also includes a self-contained `research_run` record: run ID and timestamp, research question, input universe, source status, market snapshot and regime, Qwen/fallback status, validated paper insights, risk controls, and pending human decision. This preserves the evidence needed to document a complete genuine Qwen run after the server-side key is configured.
 
 ## Risk controls
 
@@ -129,6 +131,10 @@ Only outputs captured from the running application belong here. No run is fabric
 | Human decision | Pending / not recorded |
 
 This record verifies the fallback path, not a genuine Qwen run. Live values are point-in-time observations and will change.
+
+### Genuine Qwen run status
+
+**Pending configuration.** No genuine Qwen run is claimed because the current deployment has no server-side Qwen key. After secure configuration, a run may be documented here only when `/api/trade-decisions` returns `qwen_generated: true` and `analysis_source: qwen_3_8_max`.
 
 ## Local run
 

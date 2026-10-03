@@ -82,11 +82,21 @@ async function fetchRTokenPrices() {
   return RTOKENS.map((asset) => {
     const row = byPair.get(asset.pair);
     if (!row) return { ...asset, available: false };
+    const price = Number(row.lastPr);
+    const open24h = Number(row.open);
+    const derivedChange = Number.isFinite(price) && Number.isFinite(open24h) && open24h > 0
+      ? ((price - open24h) / open24h) * 100
+      : null;
+    const reportedChange = Number(row.change24h);
     return {
       ...asset,
-      available: true,
-      price: Number(row.lastPr),
-      change_pct: Number(row.change24h || 0) * 100,
+      available: Number.isFinite(price) && price > 0,
+      price,
+      open_24h: Number.isFinite(open24h) && open24h > 0 ? open24h : null,
+      change_pct: Number.isFinite(derivedChange)
+        ? Number(derivedChange.toFixed(4))
+        : Number.isFinite(reportedChange) ? Number((reportedChange * 100).toFixed(4)) : null,
+      change_period: "rolling_24h",
       high: Number(row.high24h || 0),
       low: Number(row.low24h || 0),
       volume_usd: Number(row.quoteVolume || 0),
@@ -297,7 +307,7 @@ function buildPaperTrades(market) {
 
 function buildAgentEvents(market) {
   const events = market.assets
-    .filter((asset) => asset.available)
+    .filter((asset) => asset.available && Number.isFinite(asset.change_pct))
     .sort((a, b) => Math.abs(b.change_pct) - Math.abs(a.change_pct))
     .slice(0, 4)
     .map((asset) => ({
@@ -313,6 +323,51 @@ function buildAgentEvents(market) {
     next_scan_seconds: 45,
     analysis_source: "deterministic_market_scan",
     human_decision_required: true,
+  };
+}
+
+function buildResearchRun(market, decisions, analysisSource, qwenGenerated, fallbackReason = null) {
+  const generatedAt = new Date().toISOString();
+  const sourceTag = qwenGenerated ? "QWEN" : "FALLBACK";
+  const allowedAssetsOnly = decisions.every((trade) => TRADE_UNIVERSE.has(trade.asset));
+  const positionLimitsPassed = decisions.every((trade) => Number(trade.size_pct) >= 0 && Number(trade.size_pct) <= 5);
+  const stopLimitsPassed = decisions.every((trade) => {
+    const entry = Number(trade.entry_price);
+    const stop = Number(trade.stop_loss);
+    return Number.isFinite(entry) && entry > 0 && Number.isFinite(stop) && Math.abs(stop - entry) / entry <= 0.0301;
+  });
+  return {
+    run_id: `WPAI-${generatedAt.replace(/\D/g, "")}-${sourceTag}`,
+    generated_at: generatedAt,
+    research_question: "Which whitelisted rToken paper setups warrant human review under the current basis and New York market regime?",
+    input_universe: market.assets
+      .filter((asset) => TRADE_UNIVERSE.has(asset.label))
+      .map(({ label, stock, pair, price, equity_price, basis_pct, basis_state, change_pct }) => ({
+        asset: label,
+        stock,
+        pair,
+        rtoken_price: price,
+        equity_reference_price: equity_price,
+        basis_pct,
+        basis_state,
+        change_24h_pct: change_pct,
+      })),
+    data_sources: market.sources,
+    market_snapshot_at: market.updated_at,
+    market_regime: market.regime,
+    analysis_source: analysisSource,
+    qwen_generated: qwenGenerated,
+    fallback_reason: fallbackReason,
+    risk_validation: {
+      status: allowedAssetsOnly && positionLimitsPassed && stopLimitsPassed ? "PASSED" : "FAILED",
+      allowed_assets_only: allowedAssetsOnly,
+      position_limits_passed: positionLimitsPassed,
+      stop_limits_passed: stopLimitsPassed,
+      maximum_position_pct: 5,
+      maximum_stop_distance_pct: 3,
+    },
+    paper_insights: decisions,
+    human_decision: { required: true, status: "PENDING", recorded_at: null },
   };
 }
 
@@ -349,15 +404,19 @@ async function callAI(system, payload) {
 
 async function getTradeDecisions(market) {
   const fallback = buildPaperTrades(market);
-  const fallbackResponse = (reason) => ({
-    decisions: fallback,
-    engine: "Deterministic research fallback",
-    analysis_source: "deterministic_fallback",
-    qwen_generated: false,
-    fallback_reason: reason,
-    paper_only: true,
-    human_decision_required: true,
-  });
+  const fallbackResponse = (reason) => {
+    const analysisSource = "deterministic_fallback";
+    return {
+      decisions: fallback,
+      engine: "Deterministic research fallback",
+      analysis_source: analysisSource,
+      qwen_generated: false,
+      fallback_reason: reason,
+      paper_only: true,
+      human_decision_required: true,
+      research_run: buildResearchRun(market, fallback, analysisSource, false, reason),
+    };
+  };
   const ai = await callAI(
     `You are the Qwen 3.8-Max research analyst inside WhalePulse AI v2, an AI-assisted tokenized-stock research workbench.
 Return JSON with a decisions array using ONLY rNVDA, rTSLA, rAAPL, rMSFT, rCOIN, or rAMZN.
@@ -400,13 +459,15 @@ Rules: maximum position 5%, maximum stop distance 3%, paper insight only, never 
     })
     .filter(Boolean);
   if (!decisions.length) return fallbackResponse("qwen_output_failed_validation");
+  const analysisSource = "qwen_3_8_max";
   return {
     decisions,
     engine: "Qwen 3.8-Max + deterministic risk validator",
-    analysis_source: "qwen_3_8_max",
+    analysis_source: analysisSource,
     qwen_generated: true,
     paper_only: true,
     human_decision_required: true,
+    research_run: buildResearchRun(market, decisions, analysisSource, true),
   };
 }
 
